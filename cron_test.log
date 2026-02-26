@@ -1,4 +1,0 @@
-  File "<string>", line 1
-    import traceback; try:\n    from crontab import CronTab; print(type(CronTab(user=True)))\nexcept Exception:\n    traceback.print_exc()
-                      ^^^
-SyntaxError: invalid syntax
