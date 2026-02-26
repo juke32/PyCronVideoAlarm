@@ -117,19 +117,21 @@ class VideoAlarmMainWindow(tk.Tk):
         except Exception as e:
             logging.error(f"Failed to init sequence: {e}")
 
-        # Ensure MPV is installed
-        from logic.media_utils import check_mpv_installed
-        if not check_mpv_installed():
-            self.after(1000, self.show_mpv_error)
+        # Ensure Media Player is installed
+        from logic.media_utils import check_media_player_installed
+        if not check_media_player_installed():
+            self.after(1000, self.show_missing_player_error)
 
-    def show_mpv_error(self):
+    def show_missing_player_error(self):
         import platform
         import shutil
         import subprocess
         import webbrowser
         
+        system = platform.system()
+        
         dialog = tk.Toplevel(self)
-        dialog.title("MPV Player Required")
+        dialog.title("Media Player Required")
         dialog.geometry("600x320")
         dialog.resizable(False, False)
         dialog.transient(self)
@@ -148,9 +150,11 @@ class VideoAlarmMainWindow(tk.Tk):
         content_frame = ttk.Frame(dialog, padding="20 20 20 20")
         content_frame.pack(fill=tk.BOTH, expand=True)
 
+        player_name = "VLC Media Player" if system == "Windows" else "MPV Media Player"
+
         warn_label = ttk.Label(
             content_frame, 
-            text="⚠️ MPV Media Player is Missing",
+            text=f"⚠️ {player_name} is Missing",
             font=("Segoe UI", 16, "bold"),
             foreground=COLORS.get('error', '#ff5555')
         )
@@ -158,7 +162,7 @@ class VideoAlarmMainWindow(tk.Tk):
 
         desc_label = ttk.Label(
             content_frame,
-            text=("MPV is required for video and audio playback but was not found on your system.\n\n"
+            text=(f"{player_name} is required for video and audio playback but was not found on your system.\n\n"
                   "Please install it so the alarm sequences can play media files correctly."),
             wraplength=550,
             font=("Segoe UI", 11)
@@ -208,19 +212,18 @@ class VideoAlarmMainWindow(tk.Tk):
 
         def auto_install_windows():
             try:
-                # Open a Command Prompt and run winget, then pause so the user can see what happened.
-                cmd = "winget install Shinchiro.mpv && echo. && echo Finished! Note: You may need to restart the application to detect MPV. && pause"
+                # Open a Command Prompt and run winget for VLC
+                cmd = "winget install VideoLAN.VLC && echo. && echo Finished! && pause"
                 subprocess.Popen(["cmd.exe", "/c", cmd])
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to run winget install: {e}\n\nPlease install manually.", parent=dialog)
 
-        # OS Specific Install Buttons
         if system == "Linux":
-            ttk.Button(btn_frame, text="Auto Install (Terminal)", command=auto_install_linux).pack(side=tk.LEFT, padx=5)
+            ttk.Button(btn_frame, text="Auto Install MPV (Terminal)", command=auto_install_linux).pack(side=tk.LEFT, padx=5)
+            ttk.Button(btn_frame, text="Download from mpv.io", command=lambda: webbrowser.open("https://mpv.io/installation/")).pack(side=tk.LEFT, padx=5)
         elif system == "Windows":
-            ttk.Button(btn_frame, text="Install via Winget", command=auto_install_windows).pack(side=tk.LEFT, padx=5)
-
-        ttk.Button(btn_frame, text="Download from mpv.io", command=lambda: webbrowser.open("https://mpv.io/installation/")).pack(side=tk.LEFT, padx=5)
+            ttk.Button(btn_frame, text="Install VLC via Winget", command=auto_install_windows).pack(side=tk.LEFT, padx=5)
+            ttk.Button(btn_frame, text="Download from videolan.org", command=lambda: webbrowser.open("https://www.videolan.org/vlc/")).pack(side=tk.LEFT, padx=5)
         
         ttk.Button(btn_frame, text="Close", command=dialog.destroy).pack(side=tk.RIGHT, padx=5)
 
@@ -1180,7 +1183,7 @@ Quickstart Guide
    - Windows: may run a missed alarm at next boot if the PC was off at alarm time.
 
 4. First Time Setup
-   - MPV will automatically prompt for installation if not found (Linux/Windows via winget).
+   - MPV (Linux) or VLC (Windows) will automatically prompt for installation if not found.
    - Go to Settings → Install → 'Add to Applications' (Linux) or 'Add to Start Menu' (Windows)
      to register the app with your launcher and give it the correct icon.
    - Your build version is shown at the top of the Settings tab.

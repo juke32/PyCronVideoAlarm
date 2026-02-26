@@ -36,12 +36,14 @@ def play_audio_with_retry(file_path, duration=None, gain=0, system_volume=None, 
 
 
 def get_player_priority(file_path):
-    """Get the prioritized list of players (Forced MPV only now)."""
+    """Get the preferred player."""
+    if sys.platform == "win32":
+        return ["vlc"]
     return ["mpv"]
 
 def execute_media(file_path, config=None):
     """
-    Play media file (audio/video) using MPV exclusively.
+    Play media file (audio/video) using the platform's preferred player.
     """
     if not os.path.exists(file_path):
         logging.error(f"Media file not found: {file_path}")
@@ -49,69 +51,131 @@ def execute_media(file_path, config=None):
 
     success = False
     try:
-        success = play_video_mpv(file_path, config)
+        if sys.platform == "win32":
+            success = play_video_vlc(file_path, config)
+            player_name = "vlc"
+        else:
+            success = play_video_mpv(file_path, config)
+            player_name = "mpv"
+            
         if success:
-            logging.info(f"Successfully played using mpv")
+            logging.info(f"Successfully played using {player_name}")
             return True
         else:
-            logging.warning(f"mpv failed.")
+            logging.warning(f"{player_name} failed.")
             return False
     except Exception as e:
-        logging.error(f"Error with player mpv: {e}")
+        logging.error(f"Error with player: {e}")
         return False
 
 # Alias for backward compatibility
 execute_video = execute_media
 
-def get_mpv_path():
-    """Find the mpv executable natively or through common Winget locations."""
-    # First try system PATH
-    mpv_path = shutil.which("mpv")
-    if mpv_path:
-        return mpv_path
+def get_vlc_path():
+    """Find the VLC executable natively on Windows."""
+    vlc_path = shutil.which("vlc")
+    if vlc_path:
+        return vlc_path
         
-    # If not in PATH, and we are on Windows, check common fallback locations
     if sys.platform == "win32":
-        local_appdata = os.environ.get("LOCALAPPDATA", "")
-        program_files = os.environ.get("ProgramFiles", "")
+        program_files = os.environ.get("ProgramFiles", "C:\\Program Files")
+        program_files_x86 = os.environ.get("ProgramFiles(x86)", "C:\\Program Files (x86)")
         
-        fallbacks = []
-        if local_appdata:
-            # Winget shims
-            fallbacks.append(os.path.join(local_appdata, "Microsoft", "WinGet", "Links", "mpv.exe"))
-            
-            # Shinchiro portable install location
-            import glob
-            winget_packages = os.path.join(local_appdata, "Microsoft", "WinGet", "Packages", "Shinchiro.mpv_*", "**", "mpv.exe")
-            matches = glob.glob(winget_packages, recursive=True)
-            fallbacks.extend(matches)
-            
-        if program_files:
-            fallbacks.append(os.path.join(program_files, "mpv", "mpv.exe"))
-            fallbacks.append(os.path.join(program_files, "mpv.net", "mpvnet.exe"))
-            
+        fallbacks = [
+            os.path.join(program_files, "VideoLAN", "VLC", "vlc.exe"),
+            os.path.join(program_files_x86, "VideoLAN", "VLC", "vlc.exe")
+        ]
+        
         for path in fallbacks:
             if path and os.path.isfile(path) and os.access(path, os.X_OK):
                 return path
                 
     return None
 
-def check_mpv_installed():
-    """Verify strictly if MPV is installed."""
+def get_mpv_path():
+    """Find the mpv executable."""
+    return shutil.which("mpv")
+    
+def check_media_player_installed():
+    """Verify strictly if the native media player is installed."""
+    if sys.platform == "win32":
+        return get_vlc_path() is not None
     return get_mpv_path() is not None
 
 def detect_available_players():
     """
     Detect which video players are installed on the system.
-    Returns: ['mpv'] if installed, else []
+    Returns: ['vlc'] on Windows, ['mpv'] on Linux.
     """
     available = []
     
-    # Check for MPV
-    if check_mpv_installed():
-        available.append("mpv")
-        
+    if sys.platform == "win32":
+        if get_vlc_path():
+            available.append("vlc")
+    else:
+        if get_mpv_path():
+            available.append("mpv")
+            
     return available
+
+def play_video_vlc(file_path, config=None):
+    """Play video file using VLC on Windows."""
+    vlc_path = get_vlc_path()
+    if not vlc_path:
+        logging.error("VLC executable not found.")
+        return False
+        
+    try:
+        fullscreen = True
+        gain = 0
+        system_volume = None
+        start_time = None
+        end_time = None
+        
+        if config:
+            fullscreen = config.get("fullscreen", True)
+            gain = config.get("gain", 0)
+            system_volume = config.get("system_volume")
+            if "from" in config: start_time = ensure_time_format(config["from"])
+            if "to" in config: end_time = ensure_time_format(config["to"])
+
+        # Set system volume if requested
+        if system_volume is not None:
+             try:
+                 from logic.actions import handle_set_system_volume
+                 handle_set_system_volume({"volume": system_volume})
+             except Exception as e:
+                 logging.warning(f"Failed to set system volume: {e}")
+
+        cmd = [vlc_path, file_path, "--play-and-exit", "--no-video-title-show"]
+        
+        if fullscreen:
+            cmd.append("--fullscreen")
+            
+        # Start/End time
+        if start_time and float(start_time) > 0:
+            cmd.append(f"--start-time={start_time}")
+        if end_time and float(end_time) > 0:
+            cmd.append(f"--stop-time={end_time}")
+            
+        # Audio gain
+        if gain is not None and gain != 0:
+            # simple linear volume adjustment roughly for VLC
+            cmd.append(f"--mmdevice-volume={min(1.0, max(0.0, 1.0 + (float(gain) / 40.0)))}")
+
+        logging.info(f"Launching VLC: {cmd}")
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        
+        if result.returncode != 0:
+            logging.error(f"VLC exited with code {result.returncode}")
+            logging.error(f"VLC stderr: {result.stderr}")
+            return False
+            
+        return True
+        
+    except Exception as e:
+        logging.error(f"VLC playback error: {e}")
+        return False
 
 def play_video_mpv(file_path, config=None):
     """Play video file using mpv."""

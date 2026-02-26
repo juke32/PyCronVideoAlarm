@@ -56,7 +56,8 @@ python src/main.py
 
 | Dependency | Purpose | Linux | Windows |
 |---|---|---|---|
-| **MPV** | Video & audio playback | `sudo apt install mpv` | [mpv.io](https://mpv.io) or `winget install mpv` |
+| **MPV (Linux)** | Video & audio playback | `sudo apt install mpv` | - |
+| **VLC (Windows)** | Video & audio playback | - | [videolan.org](https://www.videolan.org/vlc/) or `winget install VideoLAN.VLC` |
 
 ### Python (auto-installed via `requirements.txt`)
 
@@ -139,7 +140,7 @@ For full Linux details (Fedora, udev rules, codecs, sleep inhibition): see [READ
 ## 🪟 Windows Setup
 
 1. Download and run `VideoAlarm_Windows.exe`
-2. Install MPV: `winget install mpv` or from [mpv.io](https://mpv.io)
+2. Install VLC: `winget install VideoLAN.VLC` or from [videolan.org](https://www.videolan.org/vlc/)
 3. Alarms are registered in **Windows Task Scheduler** — no background process needed
 4. Go to **Settings → Add to Start Menu** to add a shortcut
 
@@ -153,7 +154,7 @@ For full Linux details (Fedora, udev rules, codecs, sleep inhibition): see [READ
 | Problem | Solution |
 |---|---|
 | Alarm didn't fire | Check the **Next Alarm** ticker in the Alarms tab. Verify cron/Task Scheduler using a 1-minute test alarm. |
-| Video won't play | Ensure MPV is installed: `mpv --version` in terminal |
+| Video won't play | Ensure MPV (Linux) or VLC (Windows) is installed. |
 | No sound | On Linux, check `XDG_RUNTIME_DIR` is set. The app logs this on each alarm run. |
 | App won't open on Linux | Run `chmod +x VideoAlarm_Linux` then try again |
 | Brightness control fails | Install `brightnessctl` or add user to `video` group (Linux) |
