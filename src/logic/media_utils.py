@@ -63,9 +63,42 @@ def execute_media(file_path, config=None):
 # Alias for backward compatibility
 execute_video = execute_media
 
+def get_mpv_path():
+    """Find the mpv executable natively or through common Winget locations."""
+    # First try system PATH
+    mpv_path = shutil.which("mpv")
+    if mpv_path:
+        return mpv_path
+        
+    # If not in PATH, and we are on Windows, check common fallback locations
+    if sys.platform == "win32":
+        local_appdata = os.environ.get("LOCALAPPDATA", "")
+        program_files = os.environ.get("ProgramFiles", "")
+        
+        fallbacks = []
+        if local_appdata:
+            # Winget shims
+            fallbacks.append(os.path.join(local_appdata, "Microsoft", "WinGet", "Links", "mpv.exe"))
+            
+            # Shinchiro portable install location
+            import glob
+            winget_packages = os.path.join(local_appdata, "Microsoft", "WinGet", "Packages", "Shinchiro.mpv_*", "**", "mpv.exe")
+            matches = glob.glob(winget_packages, recursive=True)
+            fallbacks.extend(matches)
+            
+        if program_files:
+            fallbacks.append(os.path.join(program_files, "mpv", "mpv.exe"))
+            fallbacks.append(os.path.join(program_files, "mpv.net", "mpvnet.exe"))
+            
+        for path in fallbacks:
+            if path and os.path.isfile(path) and os.access(path, os.X_OK):
+                return path
+                
+    return None
+
 def check_mpv_installed():
     """Verify strictly if MPV is installed."""
-    return shutil.which("mpv") is not None
+    return get_mpv_path() is not None
 
 def detect_available_players():
     """
@@ -82,7 +115,7 @@ def detect_available_players():
 
 def play_video_mpv(file_path, config=None):
     """Play video file using mpv."""
-    mpv_path = shutil.which("mpv")
+    mpv_path = get_mpv_path()
     if not mpv_path:
         logging.error("mpv executable not found.")
         return False
