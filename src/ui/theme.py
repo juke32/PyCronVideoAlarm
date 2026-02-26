@@ -16,7 +16,8 @@ THEMES = {
         "text_dim": "#666666",
         "border": "#CCCCCC",
         "accent_audio": "#F5D9FF",
-        "accent_video": "#C8FBFB"
+        "accent_video": "#C8FBFB",
+        "accent_wait": "#FFF5C2"
     },
     "Legacy": {
         "bg_dark": "#C0C0C0",        # Classic Grey
@@ -30,7 +31,8 @@ THEMES = {
         "text_dim": "#404040",
         "border": "#808080",         # Dark Grey border
         "accent_audio": "#E0E0E0",
-        "accent_video": "#D0D0D0"
+        "accent_video": "#D0D0D0",
+        "accent_wait": "#E8E8E8"
     },
     "Twilight": {
         "bg_dark": "#282C34",        # One Dark bg
@@ -44,7 +46,8 @@ THEMES = {
         "text_dim": "#5C6370",       # Comments/Dim
         "border": "#181A1F",
         "accent_audio": "#475459",    # default 353b45
-        "accent_video": "#474653"    # default 454552
+        "accent_video": "#474653",    # default 454552
+        "accent_wait": "#000000"
     },
     "Midnight Blue": {
         "bg_dark": "#050A14",
@@ -58,7 +61,8 @@ THEMES = {
         "text_dim": "#B0BEC5",
         "border": "#1A237E",
         "accent_audio": "#1A1432",
-        "accent_video": "#0F1E32"
+        "accent_video": "#0F1E32",
+        "accent_wait": "#30261A"
     },
     "DarkPurple": {
         "bg_dark": "#0A0A0A",       # Main Window Background
@@ -72,7 +76,8 @@ THEMES = {
         "text_dim": "#A0A0A0",      # Secondary/Comment Text Color
         "border": "#2A2A2A",        # Borders, Separators
         "accent_audio": "#221A2A",  # Special card background for Audio items
-        "accent_video": "#1A232A"   # Special card background for Video items
+        "accent_video": "#1A232A",  # Special card background for Video items
+        "accent_wait": "#2A231A"
     },
     "High Contrast": {
         "bg_dark": "#000000",
@@ -86,7 +91,8 @@ THEMES = {
         "text_dim": "#FFFFFF",
         "border": "#FFFFFF",
         "accent_audio": "#2A2A00",
-        "accent_video": "#002A2A"
+        "accent_video": "#002A2A",
+        "accent_wait": "#2A1700"
     },
     "PyCron": {
         "bg_dark": "#1A1A14",        # Main Window Background (Very Dark Olive)
@@ -100,7 +106,8 @@ THEMES = {
         "text_dim": "#A0A090",       # Dim Text (Warm Grey)
         "border": "#38382A",         # Borders match buttons
         "accent_audio": "#25251C",   # Slightly different shade for audio
-        "accent_video": "#25251C"    # Slightly different shade for video
+        "accent_video": "#25251C",   # Slightly different shade for video
+        "accent_wait": "#2C2C1F"
     }
 }
 
@@ -134,12 +141,14 @@ def apply_theme(root, theme_name="Twilight"):
     style.configure('Card.TFrame', background=COLORS['bg_card'], relief="flat")
     style.configure('AudioCard.TFrame', background=COLORS.get('accent_audio', COLORS['bg_card']), relief="flat")
     style.configure('VideoCard.TFrame', background=COLORS.get('accent_video', COLORS['bg_card']), relief="flat")
+    style.configure('WaitCard.TFrame', background=COLORS.get('accent_wait', COLORS['bg_card']), relief="flat")
     
     # Labels
     style.configure('TLabel', background=COLORS['bg_dark'], foreground=COLORS['text_main'])
     style.configure('Card.TLabel', background=COLORS['bg_card'], foreground=COLORS['text_main'])
     style.configure('AudioCard.TLabel', background=COLORS.get('accent_audio', COLORS['bg_card']), foreground=COLORS['text_main'])
     style.configure('VideoCard.TLabel', background=COLORS.get('accent_video', COLORS['bg_card']), foreground=COLORS['text_main'])
+    style.configure('WaitCard.TLabel', background=COLORS.get('accent_wait', COLORS['bg_card']), foreground=COLORS['text_main'])
     style.configure('Header.TLabel', font=FONTS['h1'], foreground=COLORS['primary'])
     style.configure('Subheader.TLabel', font=FONTS['h2'], foreground=COLORS['secondary'])
     
@@ -220,14 +229,36 @@ def apply_theme(root, theme_name="Twilight"):
         selectforeground=[('readonly', COLORS['bg_dark'])]
     )
 
-    # Scrollbars (Darker)
+    # Spinbox
+    style.configure('TSpinbox', 
+        fieldbackground=COLORS['bg_light'], 
+        background=COLORS['bg_card'], 
+        foreground=COLORS['text_main'],
+        arrowcolor=COLORS['text_main'],
+        borderwidth=1
+    )
+    style.map('TSpinbox', 
+        fieldbackground=[('readonly', COLORS['bg_light'])], 
+        selectbackground=[('focus', COLORS['primary'])], 
+        selectforeground=[('focus', COLORS['bg_dark'])]
+    )
+
+    # Scrollbars (Darker, bigger)
+    style.configure("TScrollbar", 
+        background=COLORS['bg_card'], 
+        troughcolor=COLORS['bg_dark'], 
+        bordercolor=COLORS['bg_dark'], 
+        arrowcolor=COLORS['text_main'],
+        arrowsize=18
+    )
     style.configure("Vertical.TScrollbar", 
         background=COLORS['bg_card'], 
         troughcolor=COLORS['bg_dark'], 
         bordercolor=COLORS['bg_dark'], 
-        arrowcolor=COLORS['text_main']
+        arrowcolor=COLORS['text_main'],
+        arrowsize=18
     )
-
+    
     # Global Tkinter defaults
     root.configure(bg=COLORS['bg_dark'])
     root.option_add('*background', COLORS['bg_dark'])
@@ -240,5 +271,8 @@ def apply_theme(root, theme_name="Twilight"):
     root.option_add('*Text.insertBackground', COLORS['text_main']) # Cursor color
     root.option_add('*Listbox.background', COLORS['bg_light'])
     root.option_add('*Listbox.foreground', COLORS['text_main'])
+    root.option_add('*Spinbox.background', COLORS['bg_light'])
+    root.option_add('*Spinbox.foreground', COLORS['text_main'])
+    root.option_add('*Spinbox.buttonBackground', COLORS['bg_card'])
     
     return style

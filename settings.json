@@ -8,7 +8,7 @@
     "ui": {
         "theme": "DarkPurple",
         "start_minimized": false,
-        "time_format": "12h"
+        "time_format": "Both"
     },
     "alarms": {
         "sleep_offset_minutes": 10

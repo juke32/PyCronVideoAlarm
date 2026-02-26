@@ -123,13 +123,106 @@ class VideoAlarmMainWindow(tk.Tk):
             self.after(1000, self.show_mpv_error)
 
     def show_mpv_error(self):
-        messagebox.showerror(
-            "MPV Player Required", 
-            "MPV Media Player is required for video and audio playback but was not found on your system.\n\n"
-            "Please install it to ensure the application works correctly:\n"
-            " - Linux: sudo apt install mpv\n"
-            " - Windows: winget install mpv.net (or download from mpv.io)"
+        import platform
+        import shutil
+        import subprocess
+        import webbrowser
+        
+        dialog = tk.Toplevel(self)
+        dialog.title("MPV Player Required")
+        dialog.geometry("600x320")
+        dialog.resizable(False, False)
+        dialog.transient(self)
+        dialog.grab_set()
+        
+        # Center the dialog
+        dialog.update_idletasks()
+        x = self.winfo_x() + (self.winfo_width() - dialog.winfo_width()) // 2
+        y = self.winfo_y() + (self.winfo_height() - dialog.winfo_height()) // 2
+        dialog.geometry(f"+{x}+{y}")
+        
+        # Apply theme colors
+        from .theme import COLORS
+        dialog.configure(bg=COLORS.get('bg_dark', '#1e1e2e'))
+        
+        content_frame = ttk.Frame(dialog, padding="20 20 20 20")
+        content_frame.pack(fill=tk.BOTH, expand=True)
+
+        warn_label = ttk.Label(
+            content_frame, 
+            text="⚠️ MPV Media Player is Missing",
+            font=("Segoe UI", 16, "bold"),
+            foreground=COLORS.get('error', '#ff5555')
         )
+        warn_label.pack(anchor=tk.W, pady=(0, 10))
+
+        desc_label = ttk.Label(
+            content_frame,
+            text=("MPV is required for video and audio playback but was not found on your system.\n\n"
+                  "Please install it so the alarm sequences can play media files correctly."),
+            wraplength=550,
+            font=("Segoe UI", 11)
+        )
+        desc_label.pack(anchor=tk.W, pady=(0, 20))
+
+        # Button Frame
+        btn_frame = ttk.Frame(content_frame)
+        btn_frame.pack(fill=tk.X, expand=True, side=tk.BOTTOM)
+
+        system = platform.system()
+
+        def auto_install_linux():
+            if shutil.which("apt"):
+                cmd = "sudo apt update && sudo apt install -y mpv"
+            elif shutil.which("apt-get"):  # Fallback for older Debian/Ubuntu
+                cmd = "sudo apt-get update && sudo apt-get install -y mpv"
+            elif shutil.which("dnf"):
+                cmd = "sudo dnf install -y mpv"
+            elif shutil.which("pacman"):
+                cmd = "sudo pacman -S --noconfirm mpv"
+            elif shutil.which("zypper"):
+                cmd = "sudo zypper install -y mpv"
+            else:
+                messagebox.showerror("Error", "Could not detect a supported package manager. Please install mpv manually.", parent=dialog)
+                return
+
+            terminals = ["x-terminal-emulator", "gnome-terminal", "konsole", "xfce4-terminal", "xterm", "lxterminal"]
+            term_exe = next((t for t in terminals if shutil.which(t)), None)
+            
+            if term_exe:
+                try:
+                    # Provide an interactive prompt in case sudo needs a password, then wait.
+                    full_cmd = f"bash -c '{cmd}; echo \"\"; echo \"Press Enter to close this window...\"; read'"
+                    if term_exe == "gnome-terminal":
+                        subprocess.Popen([term_exe, "--", "bash", "-c", full_cmd])
+                    else:
+                        subprocess.Popen([term_exe, "-e", full_cmd])
+                except Exception as e:
+                    messagebox.showerror("Error", f"Failed to launch terminal for installation: {e}", parent=dialog)
+            else:
+                # Fallback to pure subprocess if no terminal emulator is found (which is rare on desktop but just in case)
+                try:
+                    subprocess.Popen(["sh", "-c", f"xterm -e \"{cmd}\""])
+                except:
+                    messagebox.showerror("Error", f"Could not open a terminal to run: {cmd}\nPlease run it manually.", parent=dialog)
+
+        def auto_install_windows():
+            try:
+                # Open a Command Prompt and run winget, then pause so the user can see what happened.
+                cmd = "winget install Shinchiro.mpv && echo. && echo Finished! Note: You may need to restart the application to detect MPV. && pause"
+                subprocess.Popen(["cmd.exe", "/c", cmd])
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to run winget install: {e}\n\nPlease install manually.", parent=dialog)
+
+        # OS Specific Install Buttons
+        if system == "Linux":
+            ttk.Button(btn_frame, text="Auto Install (Terminal)", command=auto_install_linux).pack(side=tk.LEFT, padx=5)
+        elif system == "Windows":
+            ttk.Button(btn_frame, text="Install via Winget", command=auto_install_windows).pack(side=tk.LEFT, padx=5)
+
+        ttk.Button(btn_frame, text="Download from mpv.io", command=lambda: webbrowser.open("https://mpv.io/installation/")).pack(side=tk.LEFT, padx=5)
+        
+        ttk.Button(btn_frame, text="Close", command=dialog.destroy).pack(side=tk.RIGHT, padx=5)
 
 
     def init_settings_tab(self):
@@ -245,13 +338,14 @@ class VideoAlarmMainWindow(tk.Tk):
         self.update_log_path_display()
         
         # Sleep Cycle Offset
-        sleep_offset_frame = ttk.LabelFrame(settings_container, text="Sleep Cycles", padding=10)
-        sleep_offset_frame.pack(fill=tk.X, pady=10)
+        sleep_offset_frame = ttk.LabelFrame(settings_container, text="Sleep Cycles", padding=5)
+        sleep_offset_frame.pack(fill=tk.X, pady=5)
 
+        # Remove extra inner padding so the box components are co-located appropriately
         sleep_offset_row = ttk.Frame(sleep_offset_frame)
-        sleep_offset_row.pack(fill=tk.X)
+        sleep_offset_row.pack(fill=tk.X, pady=2)
 
-        ttk.Label(sleep_offset_row, text="Fall-asleep offset:").pack(side=tk.LEFT, padx=5)
+        ttk.Label(sleep_offset_row, text="Fall-asleep offset:", font=("Segoe UI", 11)).pack(side=tk.LEFT, padx=5)
 
         current_offset = config.get("alarms", "sleep_offset_minutes")
         if current_offset is None:
@@ -262,10 +356,11 @@ class VideoAlarmMainWindow(tk.Tk):
             sleep_offset_row,
             from_=-120, to=120, increment=1,
             textvariable=self.sleep_offset_var,
-            width=6
+            width=6,
+            font=("Segoe UI", 12, "bold")
         )
-        offset_spin.pack(side=tk.LEFT, padx=5)
-        ttk.Label(sleep_offset_row, text="minutes  (time added before each sleep cycle button)").pack(side=tk.LEFT, padx=5)
+        offset_spin.pack(side=tk.LEFT, padx=10)
+        ttk.Label(sleep_offset_row, text="minutes  (time added before each sleep cycle button)", font=("Segoe UI", 10)).pack(side=tk.LEFT, padx=5)
 
         def save_sleep_offset():
             try:
@@ -592,19 +687,17 @@ class VideoAlarmMainWindow(tk.Tk):
 
     def init_help_tab(self):
         """Initialize the Help tab with usage instructions and debug info."""
+        from .components import ScrollableFrame
+        
         # Main Container
-        main_layout = ttk.Frame(self.help_frame)
-        main_layout.pack(fill=tk.BOTH, expand=True)
+        self.help_scroll = ScrollableFrame(self.help_frame)
+        self.help_scroll.pack(fill=tk.BOTH, expand=True)
+        
+        main_layout = self.help_scroll.scrollable_frame
 
-        # Scrollable Help Text
+        # Help Text Container
         help_container = ttk.Frame(main_layout)
         help_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        
-        help_text = scrolledtext.ScrolledText(help_container, wrap=tk.WORD, font=('Arial', 11))
-        # Theme colors will be applied by global style, but Text widget needs manual config sometimes
-        # We rely on the theme's *Text.background options which we set in theme.py
-        
-        help_text.pack(fill=tk.BOTH, expand=True)
         
         instructions = """
 Juke32 - PyCron Video Alarm Manager
@@ -632,6 +725,10 @@ Support the project: https://ko-fi.com/juke32
 
 Enjoy your wake-up experience!
         """
+        num_lines = len(instructions.strip().split('\n'))
+        help_text = tk.Text(help_container, wrap=tk.WORD, font=('Arial', 11), height=num_lines, relief="flat", borderwidth=0)
+        help_text.pack(fill=tk.BOTH, expand=True)
+        
         help_text.insert(tk.END, instructions.strip())
         help_text.configure(state='disabled') # Read-only
         
@@ -1083,7 +1180,7 @@ Quickstart Guide
    - Windows: may run a missed alarm at next boot if the PC was off at alarm time.
 
 4. First Time Setup
-   - Install MPV: 'sudo apt install mpv' (Linux) or from mpv.io (Windows).
+   - MPV will automatically prompt for installation if not found (Linux/Windows via winget).
    - Go to Settings → Install → 'Add to Applications' (Linux) or 'Add to Start Menu' (Windows)
      to register the app with your launcher and give it the correct icon.
    - Your build version is shown at the top of the Settings tab.

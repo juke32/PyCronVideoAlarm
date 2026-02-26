@@ -89,6 +89,8 @@ class ActionCard(ttk.Frame):
             card_style = 'AudioCard.TFrame'
         elif 'video' in action_type or 'play_video' in action_type:
             card_style = 'VideoCard.TFrame'
+        elif action_type == 'wait' or 'delay' in action_type:
+            card_style = 'WaitCard.TFrame'
         else:
             card_style = 'Card.TFrame'
         

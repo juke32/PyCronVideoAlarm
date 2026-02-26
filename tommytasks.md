@@ -1,10 +1,17 @@
 # LINUX:
 Change Brightness when user is added tothe video group
-Check MPV player install / checking
+Install MPV easily
 
 
 # Windows:
-Check MPV install / checking
+Check how to install MPV
+Look at how to use an installer to make it easy
+
+
+
+# MacOS:
+Try to get a first version into a .app
+look at MPV?
 
 
 
