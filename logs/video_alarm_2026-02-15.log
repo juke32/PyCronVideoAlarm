@@ -1,0 +1,63 @@
+2026-02-15 03:14:56,797 - root - INFO - File logging enabled: logs/video_alarm_2026-02-15.log
+2026-02-15 03:14:56,797 - root - INFO - File logging enabled from UI
+2026-02-15 03:15:00,317 - root - INFO - Updated setting: logging.file_logging_enabled = False
+2026-02-15 03:15:00,318 - root - INFO - Saved settings to settings.json
+2026-02-15 04:20:06,388 - root - INFO - File logging enabled: logs/video_alarm_2026-02-15.log
+2026-02-15 04:20:06,389 - root - INFO - File logging enabled from UI
+2026-02-15 04:20:26,508 - root - INFO - Updated setting: system.vlc_hw_accel = none
+2026-02-15 04:20:26,509 - root - INFO - Updated setting: system.vlc_driver_override = 
+2026-02-15 04:20:26,510 - root - INFO - Saved settings to settings.json
+2026-02-15 04:20:26,510 - root - INFO - Saved VLC settings: accel=none, override=
+2026-02-15 04:21:47,734 - root - INFO - File logging enabled: logs/video_alarm_2026-02-15.log
+2026-02-15 04:21:47,750 - root - INFO - Starting Video Alarm Dashboard...
+2026-02-15 04:21:48,219 - root - INFO - Successfully imported CronTab
+2026-02-15 04:21:48,219 - root - INFO - LinuxScheduler init: user='tom', uid=1000, home='/home/tom'
+2026-02-15 04:21:48,219 - root - ERROR - Failed to access crontab: CronTab.__init__() got an unexpected keyword argument 'user'
+2026-02-15 04:21:48,220 - root - ERROR -   User: tom, UID: 1000
+2026-02-15 04:21:48,220 - root - ERROR -   Check: /etc/cron.allow and /etc/cron.deny
+2026-02-15 04:21:48,220 - root - ERROR -   Fix: echo tom | sudo tee -a /etc/cron.allow
+2026-02-15 04:21:48,371 - root - INFO - LinuxScheduler init: user='tom', uid=1000, home='/home/tom'
+2026-02-15 04:21:48,371 - root - ERROR - Failed to access crontab: CronTab.__init__() got an unexpected keyword argument 'user'
+2026-02-15 04:21:48,372 - root - ERROR -   User: tom, UID: 1000
+2026-02-15 04:21:48,372 - root - ERROR -   Check: /etc/cron.allow and /etc/cron.deny
+2026-02-15 04:21:48,372 - root - ERROR -   Fix: echo tom | sudo tee -a /etc/cron.allow
+2026-02-15 04:21:58,848 - root - INFO - File logging enabled: logs/video_alarm_2026-02-15.log
+2026-02-15 04:21:58,858 - root - INFO - Starting Video Alarm Dashboard...
+2026-02-15 04:21:59,240 - root - INFO - Successfully imported CronTab
+2026-02-15 04:21:59,241 - root - INFO - LinuxScheduler init: user='tom', uid=1000, home='/home/tom'
+2026-02-15 04:21:59,261 - root - INFO - Crontab initialized successfully (0 existing jobs)
+2026-02-15 04:21:59,445 - root - INFO - LinuxScheduler init: user='tom', uid=1000, home='/home/tom'
+2026-02-15 04:21:59,462 - root - INFO - Crontab initialized successfully (0 existing jobs)
+2026-02-15 04:22:09,295 - root - INFO - LinuxScheduler init: user='tom', uid=1000, home='/home/tom'
+2026-02-15 04:22:09,314 - root - INFO - Crontab initialized successfully (0 existing jobs)
+2026-02-15 04:22:09,314 - root - INFO - Attempting to set alarm for 2026-02-15 04:23 using sequence 'New'
+2026-02-15 04:22:09,372 - root - INFO - Crontab write successful. Alarm set for 04:23 via Cron
+2026-02-15 04:22:09,373 - root - INFO - Cron command: "/home/tom/workspace/Coding/_VideoAlarm-Workspace/PyCronVideoCoding/.venv/bin/python" "/home/tom/workspace/Coding/_VideoAlarm-Workspace/PyCronVideoCoding/src/main.py" --execute-sequence "New" --delete-after
+2026-02-15 04:22:10,399 - root - INFO - Alarm successfully set via scheduler
+2026-02-15 04:22:10,900 - root - INFO - LinuxScheduler init: user='tom', uid=1000, home='/home/tom'
+2026-02-15 04:22:10,916 - root - INFO - Crontab initialized successfully (1 existing jobs)
+2026-02-15 04:22:17,129 - root - INFO - Testing VLC with mode=vaapi...
+2026-02-15 04:22:17,322 - root - INFO - Detected GPU Vendor: amd
+2026-02-15 04:22:17,322 - root - INFO - Launching VLC: vlc --no-video-title-show --quiet --no-loop --play-and-exit --avcodec-hw=vaapi video/example.mp4
+2026-02-15 04:22:17,324 - root - INFO - VLC launched (PID: 45064) for: example.mp4
+2026-02-15 04:25:03,631 - root - INFO - Updated setting: system.vlc_hw_accel = auto
+2026-02-15 04:25:03,631 - root - INFO - Updated setting: system.vlc_driver_override = 
+2026-02-15 04:25:03,632 - root - INFO - Saved settings to /home/tom/workspace/Coding/_VideoAlarm-Workspace/PyCronVideoCoding/src/core/../../settings.json
+2026-02-15 04:25:03,632 - root - INFO - Saved VLC settings: accel=auto, override=
+2026-02-15 04:27:28,535 - root - INFO - File logging enabled: logs/video_alarm_2026-02-15.log
+2026-02-15 04:27:28,544 - root - INFO - Starting Video Alarm Dashboard...
+2026-02-15 04:27:28,900 - root - INFO - Successfully imported CronTab
+2026-02-15 04:27:28,900 - root - INFO - LinuxScheduler init: user='tom', uid=1000, home='/home/tom'
+2026-02-15 04:27:28,919 - root - INFO - Crontab initialized successfully (0 existing jobs)
+2026-02-15 04:27:29,050 - root - INFO - LinuxScheduler init: user='tom', uid=1000, home='/home/tom'
+2026-02-15 04:27:29,067 - root - INFO - Crontab initialized successfully (0 existing jobs)
+2026-02-15 04:27:37,707 - root - INFO - Executing action: play_random_video
+2026-02-15 04:27:37,707 - root - INFO - Playing random video: video/example.mp4
+2026-02-15 04:27:37,724 - root - INFO - Pre-Flight Check: DISPLAY=':0', XDG_RUNTIME_DIR='/run/user/1000'
+2026-02-15 04:27:37,910 - root - INFO - Detected GPU Vendor: amd
+2026-02-15 04:27:37,911 - root - INFO - Launching VLC: vlc --fullscreen --no-video-title-show --quiet --no-loop --play-and-exit --avcodec-hw=vaapi video/example.mp4
+2026-02-15 04:27:37,912 - root - INFO - VLC launched (PID: 46150) for: example.mp4
+2026-02-15 04:27:44,871 - root - INFO - LinuxScheduler init: user='tom', uid=1000, home='/home/tom'
+2026-02-15 04:27:44,889 - root - INFO - Crontab initialized successfully (0 existing jobs)
+2026-02-15 04:27:50,104 - root - INFO - Updated setting: logging.file_logging_enabled = False
+2026-02-15 04:27:50,106 - root - INFO - Saved settings to /home/tom/workspace/Coding/_VideoAlarm-Workspace/PyCronVideoCoding/src/core/../../settings.json

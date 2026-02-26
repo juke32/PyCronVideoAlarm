@@ -1,0 +1,21 @@
+{
+    "system": {
+        "brightness_method": "auto",
+        "volume_method": "auto",
+        "linux_brightness_device": "",
+        "windows_nircmd_path": "nircmd.exe"
+    },
+    "ui": {
+        "theme": "DarkPurple",
+        "start_minimized": false,
+        "time_format": "12h"
+    },
+    "alarms": {
+        "sleep_offset_minutes": 10
+    },
+    "logging": {
+        "file_logging_enabled": false,
+        "log_directory": "logs",
+        "log_file_format": "video_alarm_{date}.log"
+    }
+}

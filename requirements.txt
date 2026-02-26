@@ -1,0 +1,14 @@
+requests
+Pillow
+pyautogui
+# Windows specific
+pycaw; sys_platform == 'win32'
+comtypes; sys_platform == 'win32'
+pywin32; sys_platform == 'win32'
+opencv-python
+sounddevice
+numpy
+scipy
+# Linux specific
+jeepney; sys_platform == 'linux'
+python-crontab; sys_platform == 'linux'

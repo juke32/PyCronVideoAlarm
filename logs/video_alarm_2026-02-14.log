@@ -1,0 +1,31 @@
+2026-02-14 03:03:36,152 - root - INFO - File logging enabled: logs/video_alarm_2026-02-14.log
+2026-02-14 03:03:36,152 - root - INFO - File logging enabled from UI
+2026-02-14 03:03:38,615 - root - INFO - Opened logs folder: logs
+2026-02-14 03:03:52,085 - root - WARNING - Permission denied writing to /sys/class/backlight. Ensure user is in 'video' group or has udev rules.
+2026-02-14 03:03:52,087 - root - WARNING - Permission denied writing to /sys/class/backlight. Ensure user is in 'video' group or has udev rules.
+2026-02-14 03:03:52,095 - root - INFO - Brightness set to 10% via xrandr (software)
+2026-02-14 03:03:57,124 - root - WARNING - Permission denied writing to /sys/class/backlight. Ensure user is in 'video' group or has udev rules.
+2026-02-14 03:03:57,127 - root - WARNING - Permission denied writing to /sys/class/backlight. Ensure user is in 'video' group or has udev rules.
+2026-02-14 03:03:57,139 - root - INFO - Brightness set to 100% via xrandr (software)
+2026-02-14 03:03:59,353 - root - WARNING - Permission denied writing to /sys/class/backlight. Ensure user is in 'video' group or has udev rules.
+2026-02-14 03:03:59,356 - root - WARNING - Permission denied writing to /sys/class/backlight. Ensure user is in 'video' group or has udev rules.
+2026-02-14 03:03:59,367 - root - INFO - Brightness set to 10% via xrandr (software)
+2026-02-14 03:04:01,532 - root - WARNING - Permission denied writing to /sys/class/backlight. Ensure user is in 'video' group or has udev rules.
+2026-02-14 03:04:01,533 - root - WARNING - Permission denied writing to /sys/class/backlight. Ensure user is in 'video' group or has udev rules.
+2026-02-14 03:04:01,542 - root - INFO - Brightness set to 100% via xrandr (software)
+2026-02-14 03:04:12,740 - root - INFO - Updated setting: logging.file_logging_enabled = False
+2026-02-14 03:04:12,741 - root - INFO - Saved settings to settings.json
+2026-02-14 03:37:51,365 - root - INFO - File logging enabled: logs/video_alarm_2026-02-14.log
+2026-02-14 03:37:51,366 - root - INFO - File logging enabled from UI
+2026-02-14 03:37:55,668 - root - WARNING - python-crontab not found. Error: No module named 'crontab'
+2026-02-14 03:37:58,695 - root - INFO - Opened logs folder: logs
+2026-02-14 03:43:50,063 - root - INFO - File logging enabled: logs/video_alarm_2026-02-14.log
+2026-02-14 03:43:50,066 - root - INFO - Starting Video Alarm Dashboard...
+2026-02-14 03:43:50,205 - root - WARNING - dbus module not found. Power management will be limited.
+2026-02-14 03:43:52,024 - root - INFO - Successfully imported CronTab from /home/tom/workspace/Coding/_VideoAlarm-Workspace/PyCronVideoCoding/.venv/lib64/python3.14/site-packages/crontab.py
+2026-02-14 03:43:55,984 - root - INFO - Updated setting: logging.file_logging_enabled = False
+2026-02-14 03:43:55,986 - root - INFO - Saved settings to settings.json
+2026-02-14 03:43:57,869 - root - INFO - File logging enabled: logs/video_alarm_2026-02-14.log
+2026-02-14 03:43:57,869 - root - INFO - File logging enabled from UI
+2026-02-14 03:43:59,835 - root - INFO - Updated setting: logging.file_logging_enabled = False
+2026-02-14 03:43:59,836 - root - INFO - Saved settings to settings.json
