@@ -105,3 +105,27 @@ sudo dnf install at && sudo systemctl enable --now atd
 2. **Keep Awake** — the app window must be open to actively block system sleep.
 3. **Display injection** — the app automatically sets `DISPLAY` and `XDG_RUNTIME_DIR` in cron commands so playback works from background triggers.
 4. **Moving the executable** — if you move the exe after setting alarms, update the crontab entries or re-set the alarms from the app.
+
+---
+
+## 🛠️ Troubleshooting
+
+| Problem | Solution |
+|---|---|
+| Alarm didn't fire | Check the **Next Alarm** ticker in the Alarms tab. Verify cron using a 1-minute test alarm. |
+| Video won't play | Ensure MPV is installed (`sudo apt install mpv`). |
+| No sound | Check `XDG_RUNTIME_DIR` is set. The app logs this on each alarm run. |
+| App won't open | Run `chmod +x PyCronVideoAlarm_Linux` then try again |
+| Brightness control fails | Install `brightnessctl` or add user to `video` group |
+
+Enable **Settings → Logging** and check the logs folder for detailed error output.
+
+---
+
+## 🏗️ Building from Source
+
+```bash
+./build_linux.sh
+```
+
+Or push a commit whose message **starts with** `build` to trigger GitHub Actions.
