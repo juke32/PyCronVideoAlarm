@@ -309,8 +309,8 @@ class VideoAlarmMainWindow(tk.Tk):
         sys_frame = ttk.LabelFrame(settings_container, text="System Configuration", padding=10)
         sys_frame.pack(fill=tk.X, pady=10)
         
+        ttk.Button(sys_frame, text="Open settings.json", command=self.open_settings_file).pack(side=tk.LEFT, padx=(0, 10))
         ttk.Label(sys_frame, text="For advanced system settings (brightness methods, etc.), please edit settings.json").pack(side=tk.LEFT)
-        ttk.Button(sys_frame, text="Open settings.json", command=self.open_settings_file).pack(side=tk.RIGHT)
         
         # Logging Settings
         logging_frame = ttk.LabelFrame(settings_container, text="Logging", padding=10)
@@ -325,6 +325,8 @@ class VideoAlarmMainWindow(tk.Tk):
         config = get_config()
         self.file_logging_var.set(config.get("logging", "file_logging_enabled") or False)
         
+        ttk.Button(toggle_row, text="Open Logs Folder", command=self.open_logs_folder).pack(side=tk.LEFT, padx=(0, 10))
+        
         logging_toggle = ttk.Checkbutton(
             toggle_row, 
             text="Enable File Logging", 
@@ -332,8 +334,6 @@ class VideoAlarmMainWindow(tk.Tk):
             command=self.toggle_file_logging
         )
         logging_toggle.pack(side=tk.LEFT, padx=5)
-        
-        ttk.Button(toggle_row, text="Open Logs Folder", command=self.open_logs_folder).pack(side=tk.RIGHT, padx=5)
         
         # Log file path display
         self.log_path_label = ttk.Label(logging_frame, text="", font=("Consolas", 8))

@@ -1,0 +1,4 @@
+2026-02-26 16:11:31,419 - root - INFO - File logging enabled: /home/tom/workspace/Coding/_VideoAlarm-Workspace/PyCronVideoAlarm/logs/video_alarm_2026-02-26.log
+2026-02-26 16:11:31,419 - root - INFO - File logging enabled from UI
+2026-02-26 16:11:34,312 - root - INFO - Updated setting: logging.file_logging_enabled = False
+2026-02-26 16:11:34,314 - root - INFO - Saved settings to /home/tom/workspace/Coding/_VideoAlarm-Workspace/PyCronVideoAlarm/settings.json

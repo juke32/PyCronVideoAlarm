@@ -25,6 +25,15 @@ def setup_logging():
         logging.error(f"Failed to setup file logging from config: {e}")
 
 def main():
+    if sys.platform == "win32":
+        try:
+            import ctypes
+            # Tell Windows this is a distinct app, not just "python.exe" so the taskbar icon groups properly
+            myappid = 'pycron.videoalarm.app.1'
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+        except Exception:
+            pass
+
     setup_logging()
     parser = argparse.ArgumentParser(description="Video Alarm Rebuilt")
     parser.add_argument("--test-alarm", action="store_true", help="Trigger alarm immediately for testing")
