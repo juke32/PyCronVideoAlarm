@@ -17,8 +17,7 @@
 - 🔁 **Recurring Alarms** — set alarms for specific days of the week, or one-time only
 - 🌙 **Sleep Mode** — dim/black screen overlay with keep-awake to assist sleeping
 - 💡 **Brightness Control** — dim the display as part of a sequence (Linux + Windows)
-- 🏠 **Native OS Scheduling** — uses `cron` on Linux, Task Scheduler on Windows (no background process needed)
-- 🖱️ **Party Mode** — instant random video from your library
+- 🏠 **Native OS Scheduling** — uses `cron` on Linux, `Task Scheduler` on Windows (no background process needed on windows, on linux it will need an application open on the user to run the tasks)
 - 🎨 **Themes** — multiple dark/light themes
 
 ---
