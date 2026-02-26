@@ -50,33 +50,23 @@ class VideoAlarmMainWindow(tk.Tk):
             if getattr(sys, 'frozen', False):
                 # PyInstaller: bundled data is in sys._MEIPASS
                 base_dir = sys._MEIPASS
+                png_path = os.path.join(base_dir, "alarm_icon7.png")
             else:
                 base_dir = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../.."))
+                png_path = os.path.join(base_dir, "icons", "alarm_icon7.png")
             
-            png_path = os.path.join(base_dir, "alarm_icon7.png")
-            ico_path = os.path.join(base_dir, "alarm_icon7.ico")
-            
-            if sys.platform == "win32":
-                # Windows: prefer .ico (native), fall back to .png via Pillow
-                if os.path.exists(ico_path):
-                    self.iconbitmap(ico_path)
-                elif os.path.exists(png_path):
-                    from PIL import Image, ImageTk
-                    img = Image.open(png_path)
-                    photo = ImageTk.PhotoImage(img)
-                    self.iconphoto(True, photo)
-                    self._icon_ref = photo
+            if os.path.exists(png_path):
+                from PIL import Image, ImageTk
+                img = Image.open(png_path)
+                photo = ImageTk.PhotoImage(img)
+                # True flag applies icon to all future dialogs and taskbar
+                self.iconphoto(True, photo)
+                self._icon_ref = photo
             else:
-                # Linux: prefer .png (native for iconphoto), fall back to .ico via Pillow
-                icon_file = png_path if os.path.exists(png_path) else ico_path
-                if os.path.exists(icon_file):
-                    from PIL import Image, ImageTk
-                    img = Image.open(icon_file)
-                    photo = ImageTk.PhotoImage(img)
-                    self.iconphoto(True, photo)
-                    self._icon_ref = photo
+                logging.warning(f"Window icon not found at: {png_path}")
+                
         except Exception as e:
-            logging.debug(f"Could not set window icon: {e}")
+            logging.error(f"Could not set window icon: {e}")
         
         # --- UI LAYOUT ---
         top_frame = ttk.Frame(self)
