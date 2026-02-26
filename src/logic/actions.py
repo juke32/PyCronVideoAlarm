@@ -5,10 +5,9 @@ import time
 import webbrowser
 import os
 import random
-import subprocess
 import random
 import subprocess
-from logic.media_utils import execute_media, play_audio_with_retry
+from logic.media_utils import execute_media, play_audio_with_retry, get_clean_env
 
 # List of supported action types
 ACTION_TYPES = [
@@ -170,7 +169,7 @@ def get_current_system_volume():
             try:
                 result = subprocess.run(
                     ["pactl", "get-sink-volume", "@DEFAULT_SINK@"],
-                    capture_output=True, text=True, check=True
+                    capture_output=True, text=True, check=True, env=get_clean_env()
                 )
                 # Parse output like "Volume: front-left: 65536 / 100% / 0.00 dB"
                 for line in result.stdout.split('\n'):
@@ -187,7 +186,7 @@ def get_current_system_volume():
             try:
                 result = subprocess.run(
                     ["amixer", "get", "Master"],
-                    capture_output=True, text=True, check=True
+                    capture_output=True, text=True, check=True, env=get_clean_env()
                 )
                 # Parse output like "[50%]"
                 import re
@@ -233,7 +232,7 @@ def handle_set_system_volume(config):
         if method in ["auto", "amixer_pulse"]:
             try:
                 # -M for mapped volume is more natural
-                subprocess.run(["amixer", "-D", "pulse", "set", "Master", f"{volume}%"], check=True, capture_output=True)
+                subprocess.run(["amixer", "-D", "pulse", "set", "Master", f"{volume}%"], check=True, capture_output=True, env=get_clean_env())
                 logging.info(f"Set system volume to {volume}% (Pulse)")
                 return True
             except subprocess.CalledProcessError:
@@ -242,7 +241,7 @@ def handle_set_system_volume(config):
         
         if method in ["auto", "amixer_master"]:
             try:
-                subprocess.run(["amixer", "set", "Master", f"{volume}%"], check=True, capture_output=True)
+                subprocess.run(["amixer", "set", "Master", f"{volume}%"], check=True, capture_output=True, env=get_clean_env())
                 logging.info(f"Set system volume to {volume}% (ALSA Master)")
                 return True
             except subprocess.CalledProcessError:
@@ -253,7 +252,7 @@ def handle_set_system_volume(config):
              # Basic pactl implementation
              try:
                  # sink @DEFAULT_SINK@
-                 subprocess.run(["pactl", "set-sink-volume", "@DEFAULT_SINK@", f"{volume}%"], check=True, capture_output=True)
+                 subprocess.run(["pactl", "set-sink-volume", "@DEFAULT_SINK@", f"{volume}%"], check=True, capture_output=True, env=get_clean_env())
                  logging.info(f"Set system volume to {volume}% (pactl)")
                  return True
              except (subprocess.CalledProcessError, FileNotFoundError):
@@ -291,7 +290,7 @@ def handle_set_system_volume(config):
              # Convert 0-100 to 0-65535
              nircmd_vol = int(65535 * (volume / 100.0))
              try:
-                 subprocess.run([nircmd_path, "setsysvolume", str(nircmd_vol)], check=True, creationflags=0x08000000)
+                 subprocess.run([nircmd_path, "setsysvolume", str(nircmd_vol)], check=True, creationflags=0x08000000, env=get_clean_env())
                  logging.info(f"Set system volume to {volume}% (nircmd at {nircmd_path})")
                  return True
              except FileNotFoundError:
@@ -390,7 +389,7 @@ def handle_monitor_control(config):
             nircmd_path = get_nircmd_path()
             
             cmd = "monitor off" if state == "off" else "monitor on"
-            subprocess.run(f'"{nircmd_path}" {cmd}', shell=True, check=False)
+            subprocess.run(f'"{nircmd_path}" {cmd}', shell=True, check=False, env=get_clean_env())
             logging.info(f"Monitor control (Windows): {state}")
             return True
         except Exception as e:
@@ -400,9 +399,9 @@ def handle_monitor_control(config):
     elif sys.platform.startswith("linux"):
         try:
             if state == "off":
-                subprocess.run(["xset", "dpms", "force", "off"], check=True)
+                subprocess.run(["xset", "dpms", "force", "off"], check=True, env=get_clean_env())
             else:
-                subprocess.run(["xset", "dpms", "force", "on"], check=True)
+                subprocess.run(["xset", "dpms", "force", "on"], check=True, env=get_clean_env())
             logging.info(f"Monitor control (Linux): {state}")
             return True
         except Exception as e:
@@ -421,9 +420,9 @@ def handle_run_command(config):
         wait = config.get("wait", False)
         
         if wait:
-            subprocess.run(command, shell=True, check=True)
+            subprocess.run(command, shell=True, check=True, env=get_clean_env())
         else:
-            subprocess.Popen(command, shell=True)
+            subprocess.Popen(command, shell=True, env=get_clean_env())
         return True
     except Exception as e:
         logging.error(f"Command execution failed: {e}")
@@ -448,7 +447,7 @@ def handle_open_journal(config):
             os.startfile(filepath)
         else:
             opener = "xdg-open"
-            subprocess.call([opener, filepath])
+            subprocess.call([opener, filepath], env=get_clean_env())
             
         logging.info(f"Opened journal: {filepath}")
         return True

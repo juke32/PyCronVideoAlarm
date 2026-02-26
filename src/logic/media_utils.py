@@ -7,6 +7,20 @@ import logging
 import time as time_module
 import threading
 import shutil
+import copy
+
+def get_clean_env():
+    """Return a copy of the os environment with PyInstaller's library paths stripped."""
+    env = copy.deepcopy(dict(os.environ))
+    # PyInstaller overrides LD_LIBRARY_PATH, restore original to allow system binaries to run
+    if "LD_LIBRARY_PATH_ORIG" in env:
+        env["LD_LIBRARY_PATH"] = env["LD_LIBRARY_PATH_ORIG"]
+        del env["LD_LIBRARY_PATH_ORIG"]
+    elif "LD_LIBRARY_PATH" in env:
+        # If no _ORIG, just remove it so system libraries are used
+        del env["LD_LIBRARY_PATH"]
+    return env
+
 
 
 def ensure_time_format(time_value):
@@ -164,7 +178,7 @@ def play_video_vlc(file_path, config=None):
             cmd.append(f"--mmdevice-volume={min(1.0, max(0.0, 1.0 + (float(gain) / 40.0)))}")
 
         logging.info(f"Launching VLC: {cmd}")
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        result = subprocess.run(cmd, capture_output=True, text=True, env=get_clean_env())
         
         if result.returncode != 0:
             logging.error(f"VLC exited with code {result.returncode}")
@@ -238,7 +252,7 @@ def play_video_mpv(file_path, config=None):
             cmd.append(f"--af=volume={float(gain):.1f}dB")
 
         logging.info(f"Launching mpv: {cmd}")
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        result = subprocess.run(cmd, capture_output=True, text=True, env=get_clean_env())
         
         if result.returncode != 0:
             logging.error(f"mpv exited with code {result.returncode}")
@@ -269,7 +283,7 @@ def get_video_duration_ffprobe(file_path):
             file_path
         ]
         
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        result = subprocess.run(cmd, capture_output=True, text=True, env=get_clean_env())
         if result.returncode == 0:
             try:
                 val = float(result.stdout.strip())

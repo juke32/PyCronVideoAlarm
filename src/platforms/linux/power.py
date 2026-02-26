@@ -3,6 +3,7 @@ import os
 import subprocess
 import time
 from core.interfaces import PowerManager
+from logic.media_utils import get_clean_env
 
 class LinuxPowerManager(PowerManager):
     """Linux power manager with multi-strategy sleep inhibition.
@@ -44,7 +45,7 @@ class LinuxPowerManager(PowerManager):
                     ['systemd-inhibit', '--what=idle:sleep:handle-lid-switch',
                      f'--why={reason}', '--who=PyCronVideoAlarm',
                      'sleep', 'infinity'],
-                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=get_clean_env()
                 )
                 logging.info("Inhibited sleep via systemd-inhibit CLI")
                 self._inhibit_method = 'systemd-inhibit'
@@ -59,8 +60,8 @@ class LinuxPowerManager(PowerManager):
             try:
                 display = os.environ.get('DISPLAY')
                 if display:
-                    subprocess.run(['xset', '-dpms'], check=False, capture_output=True)
-                    subprocess.run(['xset', 's', 'off'], check=False, capture_output=True)
+                    subprocess.run(['xset', '-dpms'], check=False, capture_output=True, env=get_clean_env())
+                    subprocess.run(['xset', 's', 'off'], check=False, capture_output=True, env=get_clean_env())
                     logging.info("Disabled DPMS and screensaver via xset")
                     self._restored_screensaver = True
                     success = True
@@ -165,8 +166,8 @@ class LinuxPowerManager(PowerManager):
         # Restore xset DPMS/screensaver
         if self._restored_screensaver:
             try:
-                subprocess.run(['xset', '+dpms'], check=False, capture_output=True)
-                subprocess.run(['xset', 's', 'on'], check=False, capture_output=True)
+                subprocess.run(['xset', '+dpms'], check=False, capture_output=True, env=get_clean_env())
+                subprocess.run(['xset', 's', 'on'], check=False, capture_output=True, env=get_clean_env())
                 logging.info("Re-enabled DPMS and screensaver via xset")
                 self._restored_screensaver = False
             except Exception as e:
