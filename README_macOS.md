@@ -59,3 +59,19 @@ On macOS, scheduling relies on the underlying `cron` daemon.
 | Video won't play | Ensure MPV or VLC is installed via Homebrew. |
 
 Enable **Settings → Logging** and check the logs folder for detailed error output.
+
+---
+
+## 🏗️ Building a Native .app Bundle
+
+You can build a native `.app` bundle from your Mac (or trigger GitHub Actions by pushing a commit starting with `build`):
+
+```bash
+chmod +x build_macos.sh
+./build_macos.sh
+```
+
+This will automatically:
+1. Compile the icons into an `.icns` file
+2. Bundle the application into `dist/PyCronVideoAlarm.app`
+3. Inject the necessary macOS Privacy Permissions (`Info.plist`) so the app can request access to your files.

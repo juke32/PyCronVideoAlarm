@@ -130,3 +130,92 @@ jobs:
       with:
         name: PyCronVideoAlarm_Windows
         path: dist/PyCronVideoAlarm_Windows.exe
+
+  build-macos:
+    runs-on: macos-latest
+    needs: check-trigger
+    if: needs.check-trigger.outputs.should_build == 'true'
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+
+    - name: Generate macOS .icns file
+      run: |
+        mkdir -p build_tmp/icon.iconset
+        sips -z 16 16     icons/alarm_icon7.png --out build_tmp/icon.iconset/icon_16x16.png
+        sips -z 32 32     icons/alarm_icon7.png --out build_tmp/icon.iconset/icon_16x16@2x.png
+        sips -z 32 32     icons/alarm_icon7.png --out build_tmp/icon.iconset/icon_32x32.png
+        sips -z 64 64     icons/alarm_icon7.png --out build_tmp/icon.iconset/icon_32x32@2x.png
+        sips -z 128 128   icons/alarm_icon7.png --out build_tmp/icon.iconset/icon_128x128.png
+        sips -z 256 256   icons/alarm_icon7.png --out build_tmp/icon.iconset/icon_128x128@2x.png
+        sips -z 256 256   icons/alarm_icon7.png --out build_tmp/icon.iconset/icon_256x256.png
+        sips -z 512 512   icons/alarm_icon7.png --out build_tmp/icon.iconset/icon_256x256@2x.png
+        sips -z 512 512   icons/alarm_icon7.png --out build_tmp/icon.iconset/icon_512x512.png
+        sips -z 1024 1024 icons/alarm_icon7.png --out build_tmp/icon.iconset/icon_512x512@2x.png
+        iconutil -c icns build_tmp/icon.iconset
+        mv build_tmp/icon.icns icons/alarm_icon7.icns
+        rm -rf build_tmp
+
+    - name: Build with PyInstaller
+      run: |
+        export TZ='America/New_York'
+        TS=$(date +'%Y-%m-%d_%H%M')
+        BUILD_DATE=$(date +'%Y-%m-%d %H:%M EST')
+        echo "Built: $BUILD_DATE" > version.txt
+        echo "Archive: ${TS}_PyCronVideoAlarm_macOS" >> version.txt
+
+        pyinstaller --noconfirm --onefile --windowed \
+          --name "PyCronVideoAlarm" \
+          --icon "icons/alarm_icon7.icns" \
+          --osx-bundle-identifier "com.juke32.pycronvideoalarm" \
+          --add-data "src:src" \
+          --add-data "icons/alarm_icon7.icns:." \
+          --add-data "icons/alarm_icon7.png:." \
+          --add-data "version.txt:." \
+          --add-data "LICENSE:." \
+          --exclude-module=cv2 \
+          --exclude-module=numpy \
+          --exclude-module=scipy \
+          --exclude-module=pandas \
+          --exclude-module=matplotlib \
+          --exclude-module=sounddevice \
+          src/main.py
+
+    - name: Inject macOS Permissions into Info.plist
+      run: |
+        PLIST="dist/PyCronVideoAlarm.app/Contents/Info.plist"
+        if [ -f "$PLIST" ]; then
+            plutil -insert NSAppleEventsUsageDescription -string "PyCron Video Alarm needs to control the system to execute alarm sequences." "$PLIST"
+            plutil -insert NSCalendarsUsageDescription -string "PyCron Video Alarm needs to schedule alarms." "$PLIST"
+            plutil -insert NSRemindersUsageDescription -string "PyCron Video Alarm needs to integrate with reminders." "$PLIST"
+            plutil -insert NSDesktopFolderUsageDescription -string "PyCron Video Alarm needs to access desktop media for your alarms." "$PLIST"
+            plutil -insert NSDocumentsFolderUsageDescription -string "PyCron Video Alarm needs to access documents media for your alarms." "$PLIST"
+            plutil -insert NSDownloadsFolderUsageDescription -string "PyCron Video Alarm needs to access downloaded media for your alarms." "$PLIST"
+            plutil -insert NSMicrophoneUsageDescription -string "PyCron Video Alarm occasionally requires audio capture if custom actions require it." "$PLIST"
+            plutil -insert NSScreenCaptureDescription -string "PyCron Video Alarm requires screen capture to perform screenshot sequences." "$PLIST"
+            echo "Permissions successfully added"
+        else
+            echo "Error: Info.plist not found!"
+            exit 1
+        fi
+
+    - name: Zip macOS App Bundle
+      run: |
+        cd dist
+        zip -r PyCronVideoAlarm_macOS.zip PyCronVideoAlarm.app
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: PyCronVideoAlarm_macOS
+        path: dist/PyCronVideoAlarm_macOS.zip
