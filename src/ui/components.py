@@ -111,40 +111,41 @@ class ActionCard(ttk.Frame):
         # Icon/Type
         label_style = card_style.replace('.TFrame', '.TLabel')
         
-        # --- Buttons (Right Aligned - Packed FIRST to ensure visibility) ---
-        # Order: Play, Edit, Delete, Down, Up (Right to Left)
+        # --- Buttons (Left Aligned for left-to-right user mapping) ---
+        # Order: Play, Edit, Delete, Up, Down
         
-        ttk.Button(self.header_frame, text="▶Play", width=5, style='Icon.TButton',
-                 command=lambda: callbacks['play'](self.index)).pack(side=tk.RIGHT, padx=2)
+        ttk.Button(self.header_frame, text="▶ Play", width=6, style='Icon.TButton',
+                 command=lambda: callbacks['play'](self.index)).pack(side=tk.LEFT, padx=2)
                  
-        self.expand_btn = ttk.Button(self.header_frame, text="Edit", width=4, style='Icon.TButton',
+        self.expand_btn = ttk.Button(self.header_frame, text="Edit", width=6, style='Icon.TButton',
                                    command=self.toggle_expand)
-        self.expand_btn.pack(side=tk.RIGHT, padx=2)
+        self.expand_btn.pack(side=tk.LEFT, padx=2)
         
-        ttk.Button(self.header_frame, text="✕", width=2, style='Icon.TButton',
-                 command=lambda: callbacks['remove'](self.index)).pack(side=tk.RIGHT, padx=2)
+        ttk.Button(self.header_frame, text="X", width=2, style='Icon.TButton',
+                 command=lambda: callbacks['remove'](self.index)).pack(side=tk.LEFT, padx=2)
 
-        ttk.Button(self.header_frame, text="▼", width=2, style='Icon.TButton',
-                 command=lambda: callbacks['move_down'](self.index)).pack(side=tk.RIGHT, padx=1)
-                 
         ttk.Button(self.header_frame, text="▲", width=2, style='Icon.TButton',
-                 command=lambda: callbacks['move_up'](self.index)).pack(side=tk.RIGHT, padx=1)
+                 command=lambda: callbacks['move_up'](self.index)).pack(side=tk.LEFT, padx=1)
+                 
+        ttk.Button(self.header_frame, text="▼", width=2, style='Icon.TButton',
+                 command=lambda: callbacks['move_down'](self.index)).pack(side=tk.LEFT, padx=1)
 
         # --- Labels (Left Aligned - Fill remaining space) ---
+        # 1. Name/Type
         type_lbl = ttk.Label(self.header_frame, text=action_data.get('type', 'Unknown'), 
                            font=FONTS['h2'], style=label_style, width=15)
-        type_lbl.pack(side=tk.LEFT)
+        type_lbl.pack(side=tk.LEFT, padx=5)
         type_lbl.bind("<ButtonPress-1>", self._start_drag)
         type_lbl.bind("<B1-Motion>", self._drag_motion)
         type_lbl.bind("<ButtonRelease-1>", self._end_drag)
         type_lbl.bind("<Button-3>", self.show_context_menu)
         
-        # Summary (Comment or Config Snippet)
+        # 2. Comment / Summary text
         config = action_data.get('config', {})
         summary_text = config.get('#comment', str(config))
-        # Removed truncation as requested
-        summary_lbl = ttk.Label(self.header_frame, text=summary_text, style=label_style)
-        summary_lbl.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=10)
+        # Ensure label wraps and stretches across screen without getting cut off
+        summary_lbl = ttk.Label(self.header_frame, text=summary_text, style=label_style, wraplength=800)
+        summary_lbl.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=10)
         summary_lbl.bind("<ButtonPress-1>", self._start_drag)
         summary_lbl.bind("<B1-Motion>", self._drag_motion)
         summary_lbl.bind("<ButtonRelease-1>", self._end_drag)

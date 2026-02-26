@@ -6,7 +6,7 @@
         "windows_nircmd_path": "nircmd.exe"
     },
     "ui": {
-        "theme": "DarkPurple",
+        "theme": "Twilight",
         "start_minimized": false,
         "time_format": "Both"
     },

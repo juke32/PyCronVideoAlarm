@@ -760,20 +760,20 @@ Enjoy your wake-up experience!
         control_bar = ttk.Frame(self.main_frame, style='Card.TFrame', padding=10)
         control_bar.pack(fill=tk.X, padx=10, pady=(0, 10))
         
-        # Right-aligned buttons (Pack these first so they stay visible)
+        # Left-aligned buttons (Test, Sep, New, Load, Save)
         btn_container = ttk.Frame(control_bar, style='Card.TFrame')
-        btn_container.pack(side=tk.RIGHT, padx=5)
+        btn_container.pack(side=tk.LEFT, padx=5)
         
-        # Removed Duplicate button as requested. Compact buttons.
-        ttk.Button(btn_container, text="▶ Test", width=8, command=self.test_sequence).pack(side=tk.RIGHT, padx=2)
-        ttk.Button(btn_container, text="Save", width=6, command=self.save_sequence).pack(side=tk.RIGHT, padx=2)
-        ttk.Button(btn_container, text="Load", width=6, command=self.load_sequence).pack(side=tk.RIGHT, padx=2)
-        ttk.Button(btn_container, text="New", width=6, command=self.new_sequence).pack(side=tk.RIGHT, padx=2)
+        ttk.Button(btn_container, text="▶ Test", width=8, command=self.test_sequence).pack(side=tk.LEFT, padx=2)
+        ttk.Separator(btn_container, orient='vertical').pack(side=tk.LEFT, fill='y', padx=8)
+        ttk.Button(btn_container, text="New", width=6, command=self.new_sequence).pack(side=tk.LEFT, padx=2)
+        ttk.Button(btn_container, text="Load", width=6, command=self.load_sequence).pack(side=tk.LEFT, padx=2)
+        ttk.Button(btn_container, text="Save", width=6, command=self.save_sequence).pack(side=tk.LEFT, padx=2)
 
-        # Left-aligned Name Input (Takes remaining space)
-        ttk.Label(control_bar, text="Sequence Name:", style='Card.TLabel').pack(side=tk.LEFT, padx=5)
+        # Right-aligned Name Input
         self.sequence_name = ttk.Entry(control_bar, font=("Segoe UI", 12))
-        self.sequence_name.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=10)
+        self.sequence_name.pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=10)
+        ttk.Label(control_bar, text="Sequence Name:", style='Card.TLabel').pack(side=tk.RIGHT, padx=5)
 
         # Footer -> Moved to Top: Add New Action
         add_frame = ttk.Frame(self.main_frame, style='Card.TFrame', padding=10)
