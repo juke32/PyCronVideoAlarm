@@ -209,13 +209,13 @@ jobs:
             exit 1
         fi
 
-    - name: Zip macOS App Bundle
+    - name: Create macOS DMG
       run: |
         cd dist
-        zip -r PyCronVideoAlarm_macOS.zip PyCronVideoAlarm.app
+        hdiutil create -volname "PyCronVideoAlarm" -srcfolder "PyCronVideoAlarm.app" -ov -format UDZO "PyCronVideoAlarm_macOS.dmg"
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         name: PyCronVideoAlarm_macOS
-        path: dist/PyCronVideoAlarm_macOS.zip
+        path: dist/PyCronVideoAlarm_macOS.dmg

@@ -122,10 +122,8 @@ Enable **Settings → Logging** and check the logs folder for detailed error out
 
 ---
 
-## 🏗️ Building from Source
+## 🏗️ Building a Native Executable
 
-```bash
-./build_linux.sh
-```
+The easiest way to build the executable is to let GitHub Actions handle it automatically.
 
-Or push a commit whose message **starts with** `build` to trigger GitHub Actions.
+You can trigger a fresh build for Linux, Windows, and macOS simultaneously by pushing a commit whose message **starts with** `build`. Go to the **Actions** tab on your GitHub repository to download the resulting executable artifact!

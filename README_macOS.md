@@ -2,9 +2,6 @@
 
 Detailed macOS-specific setup for **PyCron Video Alarm Manager**.
 
-> [!NOTE]
-> Pre-built applications are not yet supported for macOS. You must run the application from source.
-
 ---
 
 ## 📦 Prerequisites
@@ -24,8 +21,15 @@ Detailed macOS-specific setup for **PyCron Video Alarm Manager**.
 
 ## 🚀 Setting Up the Application
 
+### Using the Pre-built Release
+1. Download `PyCronVideoAlarm_macOS.dmg` from the latest release.
+2. Double-click the `.dmg` file to mount it.
+3. Drag the **PyCronVideoAlarm.app** into your **Applications** folder.
+4. Launch the app from your Launchpad or Applications folder. 
+   *(Note: On first launch, you may need to right-click the app and select "Open" to bypass macOS Gatekeeper since it is not developer-signed).*
+
 ### Running from Source
-Currently, macOS relies on running from the Python source:
+If you prefer to run from Python source:
 
 ```bash
 git clone https://github.com/juke32/PyCronVideoAlarm.git
@@ -62,16 +66,14 @@ Enable **Settings → Logging** and check the logs folder for detailed error out
 
 ---
 
-## 🏗️ Building a Native .app Bundle
+## 🏗️ Building a Native Executable
 
-You can build a native `.app` bundle from your Mac (or trigger GitHub Actions by pushing a commit starting with `build`):
+The easiest way to build the executable is to let GitHub Actions handle it automatically.
 
-```bash
-chmod +x build_macos.sh
-./build_macos.sh
-```
+You can trigger a fresh build for macOS, Linux, and Windows simultaneously by pushing a commit whose message **starts with** `build`. Go to the **Actions** tab on your GitHub repository to download the resulting executable artifact!
 
-This will automatically:
-1. Compile the icons into an `.icns` file
-2. Bundle the application into `dist/PyCronVideoAlarm.app`
-3. Inject the necessary macOS Privacy Permissions (`Info.plist`) so the app can request access to your files.
+This workflow automatically:
+1. Compiles the icons into a native macOS `.icns` file
+2. Bundles the application into `PyCronVideoAlarm.app`
+3. Injects the necessary macOS Privacy Permissions (`Info.plist`) so the app can request access to your files (like the Downloads folder).
+4. Packages the `.app` into a `.dmg` disk image.
