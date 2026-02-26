@@ -58,10 +58,10 @@ jobs:
 
         pyinstaller --noconfirm --onefile --windowed \
           --name "PyCronVideoAlarm_Linux" \
-          --icon "alarm_icon7.ico" \
+          --icon "icons/alarm_icon7.ico" \
           --add-data "src:src" \
-          --add-data "alarm_icon7.ico:." \
-          --add-data "alarm_icon7.png:." \
+          --add-data "icons/alarm_icon7.ico:." \
+          --add-data "icons/alarm_icon7.png:." \
           --add-data "version.txt:." \
           --add-data "LICENSE:." \
           --hidden-import=crontab \
@@ -102,10 +102,10 @@ jobs:
 
         pyinstaller --noconfirm --onefile --windowed `
           --name "PyCronVideoAlarm_Windows" `
-          --icon="alarm_icon7.ico" `
+          --icon="icons/alarm_icon7.ico" `
           --add-data "src;src" `
-          --add-data "alarm_icon7.ico;." `
-          --add-data "alarm_icon7.png;." `
+          --add-data "icons/alarm_icon7.ico;." `
+          --add-data "icons/alarm_icon7.png;." `
           --add-data "bin;bin" `
           --add-data "version.txt;." `
           --add-data "LICENSE;." `
