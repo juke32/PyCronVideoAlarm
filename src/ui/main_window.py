@@ -1060,24 +1060,18 @@ Enjoy your wake-up experience!
         action_frame = ttk.Frame(control_frame)
         action_frame.grid(row=4, column=0, columnspan=4, pady=10)
 
+        # Set Alarm Button (Bigger)        
+        self.set_alarm_btn = ttk.Button(action_frame, text="  SET ALARM  ", command=self.set_alarm, style='Header.TButton')
+        self.set_alarm_btn.pack(side=tk.LEFT, padx=5, ipady=6)
+
+        # Separator
+        ttk.Separator(action_frame, orient='vertical').pack(side=tk.LEFT, fill='y', padx=10, pady=5)
+        
         # Sleep Mode Button
         self.sleep_mode_button = ttk.Button(action_frame, text="Sleep Mode is Off", command=self.toggle_sleep_mode)
         self.sleep_mode_button.pack(side=tk.LEFT, padx=5)
         
-        # Separator
-        ttk.Separator(action_frame, orient='vertical').pack(side=tk.LEFT, fill='y', padx=10, pady=5)
-        
-
-        # Set Alarm Button and Controls        
-        self.set_alarm_btn = ttk.Button(action_frame, text="SET ALARM", command=self.set_alarm, style='Header.TButton')
-        self.set_alarm_btn.pack(side=tk.LEFT, padx=5)
-
-
-        # Duplicate button removed as requested
-        # ttk.Button(action_frame, text="DUPLICATE", command=self.duplicate_selected_alarm).pack(side=tk.LEFT, padx=5)
-        
         ttk.Button(action_frame, text="DELETE", command=self.delete_selected_alarm).pack(side=tk.LEFT, padx=5)
-        ttk.Button(action_frame, text="REFRESH", command=self.refresh_alarm_list).pack(side=tk.LEFT, padx=5)
         
         self.cancel_edit_btn = ttk.Button(action_frame, text="CANCEL EDIT", command=self.cancel_edit)
         
