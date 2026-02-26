@@ -329,6 +329,17 @@ class VideoAlarmMainWindow(tk.Tk):
                 self.install_btn = ttk.Button(install_row, text="Add to Start Menu", command=self._install_windows)
                 self.install_btn.pack(anchor=tk.W)
 
+        # Support Section
+        support_frame = ttk.LabelFrame(settings_container, text="Support", padding=10)
+        support_frame.pack(fill=tk.X, pady=10)
+        
+        ttk.Label(support_frame, text="If this app helped you wake up on time, consider supporting the project:").pack(anchor=tk.W, pady=(0, 5))
+        ttk.Button(support_frame, text="🍕 Support on Ko-fi", command=self.open_kofi).pack(anchor=tk.W)
+
+    def open_kofi(self):
+        """Open the Ko-fi support page in the default web browser."""
+        import webbrowser
+        webbrowser.open("https://ko-fi.com/juke32")
 
     def _read_license(self) -> str:
         """Read LICENSE from bundle or project root."""
@@ -616,6 +627,8 @@ Info: juke32/PyCronVideoAlarm
    - Keep Awake: Prevent computer from sleeping.
    - Black Screen / Dim Display: Manage screen during sleep.
    - Party Mode: Instant random video playback!
+
+Support the project: https://ko-fi.com/juke32
 
 Enjoy your wake-up experience!
         """

@@ -4,7 +4,7 @@
 
 [![License](https://img.shields.io/badge/License-Custom%20Source--Available-red.svg)](./LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Windows-blue)](https://github.com/juke32/PyCronVideoAlarm/releases)
-[![Buy Me a Coffee](https://img.shields.io/badge/Support-Buy%20Me%20a%20Coffee-orange)](https://buymeacoffee.com)
+[![Ko-fi](https://img.shields.io/badge/Support-Ko--fi-FF5E5B?logo=kofi)](https://ko-fi.com/juke32)
 
 ---
 
@@ -179,11 +179,9 @@ Or push a commit whose message **starts with** `build` to trigger GitHub Actions
 
 ## 🤝 Contributing & Support
 
-This project is a labour of love. If it helped you wake up on time (or made your morning less terrible), consider supporting it:
+🍕 **[Support on Ko-fi](https://ko-fi.com/juke32)** — any amount helps!
 
-☕ **[Buy Me a Coffee](https://buymeacoffee.com)** — any amount helps!
-
-Issues, feature requests, and pull requests are welcome on the [GitHub repo](https://github.com/juke32/PyCronVideoAlarm).
+Issues, feature requests, and pull requests are welcome on the [GitHub Issues](https://github.com/juke32/PyCronVideoAlarm/issues).
 
 ---
 
