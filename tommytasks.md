@@ -1,10 +1,9 @@
 # LINUX:
 Change Brightness when user is added tothe video group
-Install MPV easily
 
 
 # Windows:
-Check how to install MPV
+make sure it uses vlc and doesn't check or mention mpv
 Look at how to use an installer to make it easy
 
 
@@ -16,7 +15,7 @@ look at MPV?
 
 
 # General features/issues:
-Rework the scaling and colors in settings, it is kinda ass
+
 
 # App Feature Ideas:
 Need to fix or removesome of the actions (who cares)
@@ -33,7 +32,7 @@ Alarm templates:
     Freedom (funny, motivational, self talk) video maybe with random tasks like stretching, or journaling
     Meditation Mindfullness
 
-Adjust alarm minutes up or down buttons?? for touchscreen setting time? (adjust the logic for the sleep cycles? sleep calc is different now)
+Adjust alarm minutes up or down buttons?? for touchscreen setting time?
 
 
 # Build instructions

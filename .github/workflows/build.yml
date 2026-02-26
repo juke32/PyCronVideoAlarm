@@ -66,6 +66,12 @@ jobs:
           --add-data "LICENSE:." \
           --hidden-import=crontab \
           --hidden-import=jeepney \
+          --exclude-module=cv2 \
+          --exclude-module=numpy \
+          --exclude-module=scipy \
+          --exclude-module=pandas \
+          --exclude-module=matplotlib \
+          --exclude-module=sounddevice \
           src/main.py
 
     - name: Upload Artifact
@@ -112,6 +118,11 @@ jobs:
           --hidden-import=pycaw `
           --hidden-import=comtypes `
           --hidden-import=comtypes.stream `
+          --exclude-module=cv2 `
+          --exclude-module=numpy `
+          --exclude-module=scipy `
+          --exclude-module=pandas `
+          --exclude-module=sounddevice `
           src/main.py
 
     - name: Upload Artifact

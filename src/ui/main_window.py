@@ -946,8 +946,8 @@ Enjoy your wake-up experience!
         sleep_frame = ttk.LabelFrame(control_frame, text="Sleep Cycles")
         sleep_frame.grid(row=0, column=0, columnspan=4, padx=5, pady=5, sticky="ew")
         
-        self.sleep_cycle_info_label = ttk.Label(sleep_frame, text=self._sleep_cycle_info_text(), wraplength=600)
-        self.sleep_cycle_info_label.grid(row=0, column=0, columnspan=7, padx=5, pady=5)
+        self.sleep_cycle_info_label = ttk.Label(sleep_frame, text=self._sleep_cycle_info_text(), justify=tk.CENTER, anchor=tk.CENTER)
+        self.sleep_cycle_info_label.grid(row=0, column=0, columnspan=7, padx=5, pady=5, sticky="ew")
         
         self.sleep_cycle_buttons = []
         # Cycle hours are exactly 1.5, 3.0, 4.5, 6.0, 7.5, 9.0, 10.5
@@ -1848,11 +1848,9 @@ Quickstart Guide
             offset = 15
         
         if offset >= 0:
-            return (f"SleepCalculator.com inspired — adds {offset} min to fall asleep, "
-                    "then full 90-min cycles based on your chosen wake time.")
+            return f"SleepCalculator inspired — adds {offset}m to fall asleep, then calculates full 90m cycles."
         else:
-            return (f"SleepCalculator.com inspired — subtracts {abs(offset)} min, "
-                    "then full 90-min cycles based on your chosen wake time.")
+            return f"SleepCalculator inspired — subtracts {abs(offset)}m, then calculates full 90m cycles."
 
     def update_sleep_cycle_buttons(self):
         """Update the button text to show the correct total hours including the offset."""
