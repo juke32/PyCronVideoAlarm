@@ -249,9 +249,11 @@ jobs:
       - name: Create Multi-Platform Portable Bundle
         run: |
           mkdir -p SuperPortable/portablevideoalarm
-          mkdir -p SuperPortable/portablevideoalarm/audio
-          mkdir -p SuperPortable/portablevideoalarm/video
-          mkdir -p SuperPortable/portablevideoalarm/sequences
+          
+          # Copy media and sequences from the repository
+          cp -r audio SuperPortable/portablevideoalarm/
+          cp -r video SuperPortable/portablevideoalarm/
+          cp -r sequences SuperPortable/portablevideoalarm/
           
           # Copy executables into the unified folder
           cp release_artifacts/PyCronVideoAlarm_Linux/PyCronVideoAlarm_Linux SuperPortable/portablevideoalarm/
@@ -313,6 +315,6 @@ jobs:
             - **PyCronVideoAlarm_Linux**: Linux standalone binary
             - **PyCronVideoAlarm_Windows.exe**: Windows standalone executable
             - **PyCronVideoAlarm_macOS.dmg**: macOS Disk Image (drag .app to Applications)
-            - **PyCronVideoAlarm_MultiPlatform_Portable.zip**: All-in-one pack with shared media directories.
+            - **PyCronVideoAlarm_MultiPlatform_Portable.zip**: All-in-one pack with shared media directories. (download this if this is your first time using the app)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
