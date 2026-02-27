@@ -3,18 +3,17 @@
 
 # LINUX:
 Change Brightness when user is added tothe video group more indebth research and testing on other systems
-
+opening url broke in linux
 
 # Windows:
 maybe use an installer? still pretty easy as a portable app
 
 
 # MacOS:
-displa brightness error "Display management is not available on this system"
-only the sequences are at the .app directory, video and everything else is at the root level
-no scheduling service at the moment
 
+no scheduling service at the moment I can supposidly add alarms but I don't know if they work adn I cant delete them, they aren't where they said they were created
 
+the gain modifier stops videos and audioo from loading vlc
 
 
 

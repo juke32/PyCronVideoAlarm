@@ -83,23 +83,32 @@ On macOS, scheduling uses **launchd** — the native macOS task scheduler — vi
 
 ### 🔧 Manually removing a stuck alarm
 
-Alarms are `.plist` files in `~/Library/LaunchAgents/`. If the app can't remove one:
+> [!IMPORTANT]
+> `~/Library/` is **hidden in Finder by default**. To open it:
+> - In Finder: hold **Option** while clicking the **Go** menu → click **Library**
+> - Or use **Go → Go to Folder…** → type `~/Library/LaunchAgents/`
 
+Alarm plists live at `~/Library/LaunchAgents/com.juke32.pycronvideoalarm.*.plist`.
+
+**In Terminal:**
 ```bash
 # List all PyCronVideoAlarm alarms
 ls ~/Library/LaunchAgents/com.juke32.pycronvideoalarm.*.plist
 
-# Remove a specific one (replace <uuid> with the actual filename)
-launchctl unload ~/Library/LaunchAgents/com.juke32.pycronvideoalarm.<uuid>.plist
-rm ~/Library/LaunchAgents/com.juke32.pycronvideoalarm.<uuid>.plist
-
-# Or nuke ALL alarms at once (emergency reset)
+# Remove ALL alarms (emergency reset)
 for f in ~/Library/LaunchAgents/com.juke32.pycronvideoalarm.*.plist; do
-  launchctl unload "$f" && rm "$f"
+  launchctl bootout gui/$(id -u) "$f" 2>/dev/null
+  launchctl unload "$f" 2>/dev/null
+  rm "$f"
 done
 ```
 
-You can also open `~/Library/LaunchAgents/` in Finder (**Go → Go to Folder…** → paste the path) and delete the `.plist` files manually.
+**If an alarm exists but isn't firing**, manually register it with launchd:
+```bash
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.juke32.pycronvideoalarm.<uuid>.plist
+```
+
+**Check the app's debug info**: in the app go to **Settings → Show Scheduler Debug Info** — it lists each alarm plist and shows whether launchd has it loaded.
 
 Enable **Settings → Logging** and check the logs folder for detailed error output.
 

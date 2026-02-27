@@ -111,44 +111,93 @@ def handle_play_audio(config):
     return False
 
 def handle_open_url(config):
-    """Handle open_url action with browser selection."""
+    """Handle open_url action with browser selection.
+    
+    On Linux: uses xdg-open via subprocess (avoids PyInstaller PATH/LD_LIBRARY_PATH issues).
+    On macOS: uses the 'open' command.
+    On Windows: uses webbrowser module.
+    All paths fall back to webbrowser if the native command fails.
+    """
     url = config.get("url")
     if not url: return False
-    
+
     browser_name = config.get("browser", "default").lower()
-    
-    try:
-        if browser_name == "default":
+
+    # --- Native OS openers (more reliable than webbrowser from frozen apps) ---
+    if browser_name == "default":
+        try:
+            if sys.platform.startswith("linux"):
+                result = subprocess.run(
+                    ["xdg-open", url],
+                    capture_output=True, text=True,
+                    env=get_clean_env()
+                )
+                if result.returncode == 0:
+                    logging.info(f"Opened URL via xdg-open: {url}")
+                    return True
+                logging.warning(f"xdg-open failed (rc={result.returncode}): {result.stderr.strip()}")
+            elif sys.platform == "darwin":
+                result = subprocess.run(
+                    ["open", url],
+                    capture_output=True, text=True
+                )
+                if result.returncode == 0:
+                    logging.info(f"Opened URL via open: {url}")
+                    return True
+        except FileNotFoundError:
+            pass  # Fall through to webbrowser
+        except Exception as e:
+            logging.warning(f"Native URL opener failed: {e}")
+
+        # Fallback: webbrowser module
+        try:
             webbrowser.open(url)
             return True
-            
-        # Try to get specific browser
-        # Handle chromium naming differences
+        except Exception as e:
+            logging.error(f"Failed to open URL: {e}")
+            return False
+
+    # --- Specific browser requested ---
+    try:
         if browser_name == "chromium":
-            try:
-                webbrowser.get("chromium").open(url)
-                return True
-            except webbrowser.Error:
-                # Fallback to chromium-browser (common on Ubuntu/Debian)
+            # Try chromium, then chromium-browser (Ubuntu/Debian naming)
+            for name in ["chromium", "chromium-browser"]:
                 try:
-                    webbrowser.get("chromium-browser").open(url)
-                    logging.info("Opened using chromium-browser fallback")
-                    return True
-                except webbrowser.Error:
-                    pass
+                    if sys.platform.startswith("linux"):
+                        r = subprocess.run([name, url], capture_output=True,
+                                           env=get_clean_env())
+                        if r.returncode == 0:
+                            return True
+                    else:
+                        webbrowser.get(name).open(url)
+                        return True
+                except (FileNotFoundError, webbrowser.Error):
+                    continue
         
-        # Try requested name directly
+        # Generic named browser
+        if sys.platform.startswith("linux"):
+            # Try as a direct command first
+            try:
+                r = subprocess.run([browser_name, url], capture_output=True,
+                                   env=get_clean_env())
+                if r.returncode == 0:
+                    return True
+            except FileNotFoundError:
+                pass
+        
+        # Fallback to webbrowser
         try:
-             webbrowser.get(browser_name).open(url)
-             return True
+            webbrowser.get(browser_name).open(url)
+            return True
         except webbrowser.Error:
-             logging.warning(f"Browser '{browser_name}' not found, falling back to default.")
-             webbrowser.open(url)
-             return True
-             
+            logging.warning(f"Browser '{browser_name}' not found, using default.")
+            webbrowser.open(url)
+            return True
+
     except Exception as e:
         logging.error(f"Failed to open URL: {e}")
         return False
+
 
 def handle_wait_action(config):
     """Handle wait_action."""
