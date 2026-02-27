@@ -21,6 +21,12 @@ class AlarmScheduler:
                 self.platform_scheduler = WindowsScheduler()
             except ImportError as e:
                 logging.error(f"Failed to load Windows Scheduler: {e}")
+        elif sys.platform == "darwin":
+            try:
+                from platforms.macos.scheduler import MacOSScheduler
+                self.platform_scheduler = MacOSScheduler()
+            except ImportError as e:
+                logging.error(f"Failed to load macOS Scheduler: {e}")
         else:
             logging.error(f"Unsupported platform for scheduling: {sys.platform}")
 

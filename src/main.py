@@ -62,9 +62,13 @@ def main():
         
         # Determine project root — different for frozen (PyInstaller) vs development
         if getattr(sys, 'frozen', False):
-            # Frozen: executable lives in dist/ or alongside sequences/
-            # Use the directory containing the executable, NOT sys._MEIPASS
-            project_root = os.path.dirname(os.path.abspath(sys.executable))
+            # Frozen: executable lives in dist/ (Linux/Win) or App.app/Contents/MacOS/ (macOS)
+            exe_path = os.path.abspath(sys.executable)
+            if sys.platform == 'darwin' and '.app/Contents/MacOS' in exe_path:
+                # Walk up: MacOS -> Contents -> App.app -> parent folder (where video/, audio/ live)
+                project_root = os.path.dirname(os.path.dirname(os.path.dirname(exe_path)))
+            else:
+                project_root = os.path.dirname(exe_path)
         else:
             # Development: src/main.py → project root is one level up
             project_root = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
@@ -123,7 +127,7 @@ def main():
                 logging.info(f"Attempting to delete one-time cron job for '{args.execute_sequence}'...")
                 try:
                     import os
-                    if sys.platform.startswith('linux'):
+                    if sys.platform.startswith('linux') or sys.platform == 'darwin':
                         # Directly remove the cron job by matching our unique ID + marker
                         try:
                             from crontab import CronTab

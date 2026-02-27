@@ -1,20 +1,23 @@
+
+# General features/issues:
+
 # LINUX:
-Change Brightness when user is added tothe video group
+Change Brightness when user is added tothe video group more indebth research and testing on other systems
 
 
 # Windows:
-make sure it uses vlc and doesn't check or mention mpv
-Look at how to use an installer to make it easy
-
+maybe use an installer? still pretty easy as a portable app
 
 
 # MacOS:
-Try to get a first version into a .app
-look at MPV?
+look at MPV vs VLC?
+displa brightness error "Display management is not available on this system"
+only the sequences are at the .app directory, video and everything else is at the root level
+no scheduling service at the moment
 
 
 
-# General features/issues:
+
 
 
 # App Feature Ideas:
@@ -24,7 +27,8 @@ Need to fix or removesome of the actions (who cares)
 
 record video in app
 be able to add sequences without jumping to the top
-Add less spacing between actions
+
+Ask if videos should be deleted / moved or starred after seeing
 
 Alarm templates:
     Morning motivation

@@ -6,18 +6,21 @@ Detailed macOS-specific setup for **PyCron Video Alarm Manager**.
 
 ## 📦 Prerequisites
 
-1. **MPV or VLC Media Player**: Required for reliable media playback.
-   - Install via Homebrew: 
-     ```bash
-     brew install mpv
-     ```
-     or
-     ```bash
-     brew install --cask vlc
-     ```
+1. **VLC Media Player** *(required for video/audio playback)*:
+   ```bash
+   brew install --cask vlc
+   ```
 
 2. **Python 3**:
-   - Install via Homebrew: `brew install python`
+   ```bash
+   brew install python
+   ```
+
+3. **brightness CLI** *(optional — only needed if your sequences use a `set_brightness` action)*:
+   ```bash
+   brew install brightness
+   ```
+   Without it, brightness actions are silently skipped.
 
 ## 🚀 Setting Up the Application
 

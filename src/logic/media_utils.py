@@ -51,7 +51,7 @@ def play_audio_with_retry(file_path, duration=None, gain=0, system_volume=None, 
 
 def get_player_priority(file_path):
     """Get the preferred player."""
-    if sys.platform == "win32":
+    if sys.platform in ("win32", "darwin"):
         return ["vlc"]
     return ["mpv"]
 
@@ -65,7 +65,7 @@ def execute_media(file_path, config=None):
 
     success = False
     try:
-        if sys.platform == "win32":
+        if sys.platform in ("win32", "darwin"):
             success = play_video_vlc(file_path, config)
             player_name = "vlc"
         else:
@@ -86,24 +86,29 @@ def execute_media(file_path, config=None):
 execute_video = execute_media
 
 def get_vlc_path():
-    """Find the VLC executable natively on Windows."""
+    """Find the VLC executable on Windows or macOS."""
     vlc_path = shutil.which("vlc")
     if vlc_path:
         return vlc_path
-        
+
     if sys.platform == "win32":
         program_files = os.environ.get("ProgramFiles", "C:\\Program Files")
         program_files_x86 = os.environ.get("ProgramFiles(x86)", "C:\\Program Files (x86)")
-        
+
         fallbacks = [
             os.path.join(program_files, "VideoLAN", "VLC", "vlc.exe"),
             os.path.join(program_files_x86, "VideoLAN", "VLC", "vlc.exe")
         ]
-        
+
         for path in fallbacks:
             if path and os.path.isfile(path) and os.access(path, os.X_OK):
                 return path
-                
+
+    elif sys.platform == "darwin":
+        mac_vlc = "/Applications/VLC.app/Contents/MacOS/VLC"
+        if os.path.isfile(mac_vlc) and os.access(mac_vlc, os.X_OK):
+            return mac_vlc
+
     return None
 
 def get_mpv_path():
@@ -112,24 +117,24 @@ def get_mpv_path():
     
 def check_media_player_installed():
     """Verify strictly if the native media player is installed."""
-    if sys.platform == "win32":
+    if sys.platform in ("win32", "darwin"):
         return get_vlc_path() is not None
     return get_mpv_path() is not None
 
 def detect_available_players():
     """
     Detect which video players are installed on the system.
-    Returns: ['vlc'] on Windows, ['mpv'] on Linux.
+    Returns: ['vlc'] on Windows/macOS, ['mpv'] on Linux.
     """
     available = []
-    
-    if sys.platform == "win32":
+
+    if sys.platform in ("win32", "darwin"):
         if get_vlc_path():
             available.append("vlc")
     else:
         if get_mpv_path():
             available.append("mpv")
-            
+
     return available
 
 def play_video_vlc(file_path, config=None):

@@ -23,6 +23,15 @@ def get_platform_managers() -> tuple[PowerManager, DisplayManager]:
         except ImportError as e:
             logging.error(f"Failed to import Linux managers: {e}")
             raise
-    
+
+    elif sys.platform == "darwin":
+        try:
+            from platforms.macos.power import MacOSPowerManager
+            from platforms.macos.display import MacOSDisplayManager
+            return MacOSPowerManager(), MacOSDisplayManager()
+        except ImportError as e:
+            logging.error(f"Failed to import macOS managers: {e}")
+            raise
+
     else:
         raise NotImplementedError(f"Platform {sys.platform} is not supported.")
