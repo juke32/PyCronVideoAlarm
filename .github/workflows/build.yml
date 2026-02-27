@@ -250,10 +250,24 @@ jobs:
         run: |
           mkdir -p SuperPortable/portablevideoalarm
           
-          # Copy media and sequences from the repository (if they exist)
-          if [ -d audio ]; then cp -r audio SuperPortable/portablevideoalarm/; else mkdir -p SuperPortable/portablevideoalarm/audio; fi
-          if [ -d video ]; then cp -r video SuperPortable/portablevideoalarm/; else mkdir -p SuperPortable/portablevideoalarm/video; fi
-          if [ -d sequences ]; then cp -r sequences SuperPortable/portablevideoalarm/; else mkdir -p SuperPortable/portablevideoalarm/sequences; fi
+          # Intelligent Media Finder: Checks root and subfolders, case-insensitive
+          # 1. Look for sequences
+          if [ -d sequences ]; then cp -r sequences SuperPortable/portablevideoalarm/; 
+          elif [ -d PortableVideoAlarm/sequences ]; then cp -r PortableVideoAlarm/sequences SuperPortable/portablevideoalarm/;
+          elif [ -d portablevideoalarm/sequences ]; then cp -r portablevideoalarm/sequences SuperPortable/portablevideoalarm/;
+          else mkdir -p SuperPortable/portablevideoalarm/sequences; fi
+
+          # 2. Look for audio
+          if [ -d audio ]; then cp -r audio SuperPortable/portablevideoalarm/;
+          elif [ -d PortableVideoAlarm/audio ]; then cp -r PortableVideoAlarm/audio SuperPortable/portablevideoalarm/;
+          elif [ -d portablevideoalarm/audio ]; then cp -r portablevideoalarm/audio SuperPortable/portablevideoalarm/;
+          else mkdir -p SuperPortable/portablevideoalarm/audio; fi
+
+          # 3. Look for video
+          if [ -d video ]; then cp -r video SuperPortable/portablevideoalarm/;
+          elif [ -d PortableVideoAlarm/video ]; then cp -r PortableVideoAlarm/video SuperPortable/portablevideoalarm/;
+          elif [ -d portablevideoalarm/video ]; then cp -r portablevideoalarm/video SuperPortable/portablevideoalarm/;
+          else mkdir -p SuperPortable/portablevideoalarm/video; fi
           
           # Copy executables into the unified folder
           cp release_artifacts/PyCronVideoAlarm_Linux/PyCronVideoAlarm_Linux SuperPortable/portablevideoalarm/
