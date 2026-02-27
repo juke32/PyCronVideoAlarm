@@ -20,7 +20,7 @@ Detailed macOS-specific setup for **PyCron Video Alarm Manager**.
    ```bash
    brew install brightness
    ```
-   Without it, brightness actions are silently skipped.
+   If not installed, the app automatically falls back to a `swift` one-liner using CoreGraphics (requires Xcode Command Line Tools: `xcode-select --install`). Brightness actions are never crash — they log a warning and skip if neither tool is available.
 
 ## 🚀 Setting Up the Application
 
@@ -49,17 +49,25 @@ python3 src/main.py
 ```
 
 ## ⏰ Scheduling Alarms
-On macOS, scheduling relies on the underlying `cron` daemon. 
+On macOS, scheduling uses **launchd** — the native macOS task scheduler — via `~/Library/LaunchAgents/` plist files. No crontab setup, no Full Disk Access permission required.
 
-- Alarms are created as standard cron jobs inside your user's crontab.
-- Ensure your Terminal (or the IDE/app running Python) has **Full Disk Access** in **System Settings > Privacy & Security > Full Disk Access** so it can modify the crontab without permission errors.
-- Test your terminal's crontab access:
+- Each alarm is stored as a `.plist` file under `~/Library/LaunchAgents/com.juke32.pycronvideoalarm.*.plist`.
+- Alarms are managed automatically by the app (add, remove, list).
+- One-time alarms automatically delete their plist after firing.
+- To inspect your alarms manually:
   ```bash
-  crontab -l
+  ls ~/Library/LaunchAgents/com.juke32.pycronvideoalarm.*.plist
+  ```
+- To remove all alarms manually (emergency reset):
+  ```bash
+  for f in ~/Library/LaunchAgents/com.juke32.pycronvideoalarm.*.plist; do
+    launchctl unload "$f" && rm "$f"
+  done
   ```
 
 ## 😴 Sleep and Power Settings
-- Alarms require the system to be awake to execute properly. You may need to adjust your Energy Saver/Displays settings or use a tool like Amphetamine if you want alarms to trigger without the Mac sleeping fully.
+- During alarm playback the app uses `caffeinate` (built-in to macOS) to prevent the system from sleeping.
+- If you need the Mac to wake from deep sleep to fire an alarm, enable **System Settings → Displays → Prevent automatic sleeping when the display is off** or use a third-party tool like **Amphetamine**.
 
 ---
 
@@ -67,8 +75,10 @@ On macOS, scheduling relies on the underlying `cron` daemon.
 
 | Problem | Solution |
 |---|---|
-| Alarm didn't fire | Check the **Next Alarm** ticker in the Alarms tab. Verify your terminal has Full Disk Access for crontab. |
-| Video won't play | Ensure MPV or VLC is installed via Homebrew. |
+| Alarm didn't fire | Ensure the Mac was awake at alarm time. Check `~/Library/LaunchAgents/` for your plist and `launchctl list \| grep pycronvideoalarm`. |
+| Brightness does nothing | Install `brew install brightness` OR `xcode-select --install` for the swift fallback. |
+| Video won't play | Ensure VLC is installed: `brew install --cask vlc`. |
+| Wrong file paths | Ensure `video/`, `audio/`, and `sequences/` folders are in the **same folder as the `.app` bundle**, not inside it. |
 
 Enable **Settings → Logging** and check the logs folder for detailed error output.
 

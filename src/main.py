@@ -65,8 +65,12 @@ def main():
             # Frozen: executable lives in dist/ (Linux/Win) or App.app/Contents/MacOS/ (macOS)
             exe_path = os.path.abspath(sys.executable)
             if sys.platform == 'darwin' and '.app/Contents/MacOS' in exe_path:
-                # Walk up: MacOS -> Contents -> App.app -> parent folder (where video/, audio/ live)
-                project_root = os.path.dirname(os.path.dirname(os.path.dirname(exe_path)))
+                # sys.executable = /path/to/App.app/Contents/MacOS/PyCronVideoAlarm
+                # dirname x4 reaches the folder containing the .app (where video/, audio/ live)
+                project_root = os.path.dirname(           # /path/to/
+                    os.path.dirname(                       # App.app
+                        os.path.dirname(                   # Contents
+                            os.path.dirname(exe_path))))   # MacOS
             else:
                 project_root = os.path.dirname(exe_path)
         else:
@@ -124,16 +128,59 @@ def main():
             
             # Delete if requested
             if args.delete_after:
-                logging.info(f"Attempting to delete one-time cron job for '{args.execute_sequence}'...")
+                logging.info(f"Attempting to delete one-time job for '{args.execute_sequence}'...")
                 try:
                     import os
-                    if sys.platform.startswith('linux') or sys.platform == 'darwin':
-                        # Directly remove the cron job by matching our unique ID + marker
+                    if sys.platform == 'darwin':
+                        # macOS: remove the launchd plist identified by job-id
+                        try:
+                            import glob
+                            import plistlib
+                            import subprocess as _sp
+                            plist_dir = os.path.expanduser("~/Library/LaunchAgents")
+                            label_prefix = "com.juke32.pycronvideoalarm"
+                            deleted = False
+
+                            if args.job_id:
+                                plist_file = os.path.join(plist_dir, f"{label_prefix}.{args.job_id}.plist")
+                                if os.path.exists(plist_file):
+                                    _sp.run(["launchctl", "unload", plist_file],
+                                            capture_output=True)
+                                    os.remove(plist_file)
+                                    logging.info(f"Deleted launchd plist by job-id: {args.job_id}")
+                                    deleted = True
+
+                            if not deleted:
+                                # Fallback: match by sequence name in plist EnvironmentVariables
+                                for plist_file in glob.glob(
+                                        os.path.join(plist_dir, f"{label_prefix}.*.plist")):
+                                    try:
+                                        with open(plist_file, "rb") as f:
+                                            plist = plistlib.load(f)
+                                        env = plist.get("EnvironmentVariables", {})
+                                        if (env.get("PCVA_SEQUENCE") == args.execute_sequence
+                                                and env.get("PCVA_ONE_TIME") == "1"):
+                                            _sp.run(["launchctl", "unload", plist_file],
+                                                    capture_output=True)
+                                            os.remove(plist_file)
+                                            logging.info(f"Deleted launchd plist by sequence name: {plist_file}")
+                                            deleted = True
+                                            break
+                                    except Exception:
+                                        continue
+
+                            if not deleted:
+                                logging.warning("Could not find launchd plist to delete.")
+                        except Exception as e:
+                            logging.error(f"Failed to delete launchd plist: {e}")
+
+                    elif sys.platform.startswith('linux'):
+                        # Linux: remove cron job by matching our unique ID + marker
                         try:
                             from crontab import CronTab
                             cron = CronTab(user=True)
                             job_deleted = False
-                            
+
                             # Strategy 1: Unique Job ID (Best)
                             if args.job_id:
                                 target_comment = f"#PyCronVideoAlarm:{args.job_id}"
@@ -143,51 +190,33 @@ def main():
                                         if base_cmd in str(job.command):
                                             cron.remove(job)
                                             job_deleted = True
-                                            logging.info(f"Deleted specific cron job by ID {args.job_id}")
+                                            logging.info(f"Deleted cron job by ID {args.job_id}")
                                             break
-                            
-                            # Strategy 2: Time-based Match (User Request / Fallback)
+
+                            # Strategy 2: Time-based Match
                             if not job_deleted and args.scheduled_time:
-                                logging.info(f"ID match failed/missing. Trying time match for '{args.scheduled_time}'...")
                                 try:
                                     target_h, target_m = map(int, args.scheduled_time.split(':'))
                                     for job in cron:
-                                        # Match marker prefix
-                                        is_our_job = job.comment and (job.comment == "#PyCronVideoAlarm" or job.comment.startswith("#PyCronVideoAlarm:"))
-                                        
-                                        if (is_our_job and 
-                                            args.execute_sequence in str(job.command) and
-                                            "--delete-after" in str(job.command)):
-                                            
-                                            # Check time
-                                            if job.hour == target_h and job.minute == target_m:
-                                                cron.remove(job)
-                                                job_deleted = True
-                                                logging.info(f"Deleted cron job by Time Match ({args.scheduled_time})")
-                                                break
+                                        is_our_job = job.comment and (
+                                            job.comment == "#PyCronVideoAlarm"
+                                            or job.comment.startswith("#PyCronVideoAlarm:"))
+                                        if (is_our_job
+                                                and args.execute_sequence in str(job.command)
+                                                and "--delete-after" in str(job.command)
+                                                and job.hour == target_h
+                                                and job.minute == target_m):
+                                            cron.remove(job)
+                                            job_deleted = True
+                                            logging.info(f"Deleted cron job by time match")
+                                            break
                                 except Exception as e:
                                     logging.warning(f"Time match logic error: {e}")
 
-                            # Strategy 3: Legacy Soft Match (Last Resort)
-                            # ONLY if we absolutely missed the specific ways (e.g. old version of scheduler but new main.py)
-                            if not job_deleted and not args.scheduled_time and not args.job_id:
-                                logging.info("No ID/Time provided. Falling back to UNSAFE soft match (First Match)...")
-                                for job in cron:
-                                    is_our_job = job.comment and (job.comment == "#PyCronVideoAlarm" or job.comment.startswith("#PyCronVideoAlarm:"))
-                                    
-                                    if (is_our_job and 
-                                        args.execute_sequence in str(job.command) and
-                                        "--delete-after" in str(job.command)):
-                                        
-                                        cron.remove(job)
-                                        logging.info(f"Deleted cron job via Soft Match (Unsafe): {str(job.command)[:80]}")
-                                        break
-                                        
                             if job_deleted:
                                 cron.write()
                             else:
                                 logging.warning("Could not find matching cron job to delete.")
-                                
                         except Exception as e:
                             logging.error(f"Failed to delete cron job: {e}")
                     else:

@@ -10,7 +10,6 @@ maybe use an installer? still pretty easy as a portable app
 
 
 # MacOS:
-look at MPV vs VLC?
 displa brightness error "Display management is not available on this system"
 only the sequences are at the .app directory, video and everything else is at the root level
 no scheduling service at the moment
@@ -41,6 +40,7 @@ Adjust alarm minutes up or down buttons?? for touchscreen setting time?
 
 # Build instructions
 - add "build" as the first word of a commit :p
+- add release as the first word of a commit to build 3 executables and a portable alarm directory
 
 # History:
 2026-02-17_0324 - Still having issues with the VLC on linux, also there is that alarm deletion bug when they have the same days, so the date reading thing has to be made, also the black screen improvement works well so I would rather only go back one revision or stay and push throug these current issues but I don't know. I think the easiest is to fix the bug, and add the alternative player for linux, and then we can work on stability and features... not just getting it working.

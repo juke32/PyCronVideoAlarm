@@ -1,83 +1,107 @@
 import subprocess
 import logging
+import shutil
+import os
 from core.interfaces import DisplayManager
 
 
 class MacOSDisplayManager(DisplayManager):
     """macOS display manager.
 
-    Brightness control requires the 'brightness' CLI tool:
-        brew install brightness
+    Brightness control is attempted via multiple strategies in order:
+      1. 'brightness' CLI (Homebrew: brew install brightness)  — Intel + Apple Silicon
+      2. swift one-liner via CoreBrightness framework           — requires Xcode CLT
+      3. Graceful no-op                                         — logs warning, never crashes
 
-    If it is not installed, brightness calls log a warning and return False
-    silently — no crash, no error dialog.
-
-    Display sleep / wake uses pmset which ships with macOS.
+    Display sleep/wake uses pmset (ships with macOS, no install needed).
+    No Accessibility permissions required for any of these strategies.
     """
 
-    def _run(self, cmd):
-        """Run a command. Returns True on success."""
+    def _run(self, cmd, **kwargs):
+        """Run a command. Returns (success, stdout)."""
         try:
-            subprocess.run(cmd, check=True, capture_output=True)
-            return True
+            result = subprocess.run(cmd, check=True, capture_output=True, text=True, **kwargs)
+            return True, result.stdout
         except subprocess.CalledProcessError as e:
-            logging.debug(f"Command failed: {' '.join(cmd)} — {e}")
-            return False
+            logging.debug(f"Command failed {cmd[0]}: {e.stderr.strip()}")
+            return False, ""
         except FileNotFoundError:
             logging.debug(f"Command not found: {cmd[0]}")
-            return False
+            return False, ""
+
+    def _find_brightness_bin(self):
+        """Locate the 'brightness' CLI in common Homebrew paths."""
+        candidates = [
+            shutil.which("brightness"),
+            "/opt/homebrew/bin/brightness",    # Apple Silicon Homebrew
+            "/usr/local/bin/brightness",        # Intel Homebrew
+        ]
+        for p in candidates:
+            if p and os.path.isfile(p) and os.access(p, os.X_OK):
+                return p
+        return None
 
     # ------------------------------------------------------------------
     # Display power
     # ------------------------------------------------------------------
 
     def turn_off(self) -> bool:
-        """Put the display to sleep immediately."""
-        return self._run(["pmset", "displaysleepnow"])
+        ok, _ = self._run(["pmset", "displaysleepnow"])
+        return ok
 
     def turn_on(self) -> bool:
-        """Wake the display (brief caffeinate wakeup assertion)."""
-        return self._run(["caffeinate", "-u", "-t", "1"])
+        ok, _ = self._run(["caffeinate", "-u", "-t", "1"])
+        return ok
 
     # ------------------------------------------------------------------
     # Brightness
     # ------------------------------------------------------------------
 
     def set_brightness(self, level: int) -> bool:
-        """Set screen brightness (0-100) via the 'brightness' Homebrew CLI.
-
-        If 'brightness' is not installed the call returns False and logs a
-        warning — it does NOT raise an exception or show an error dialog.
-
-        Install with: brew install brightness
-        """
+        """Set screen brightness 0-100 using the best available strategy."""
         level = max(0, min(100, int(level)))
-        brightness_val = f"{level / 100.0:.2f}"
+        frac = f"{level / 100.0:.4f}"
 
-        if self._run(["brightness", brightness_val]):
-            logging.info(f"Brightness set to {level}% via 'brightness' CLI")
+        # Strategy 1: 'brightness' CLI (Homebrew)
+        bin_path = self._find_brightness_bin()
+        if bin_path:
+            ok, _ = self._run([bin_path, frac])
+            if ok:
+                logging.info(f"Brightness → {level}% via 'brightness' CLI")
+                return True
+
+        # Strategy 2: swift one-liner via CoreBrightness
+        # Requires: xcode-select --install  (no Accessibility perms needed)
+        swift_src = (
+            "import Foundation\n"
+            "import CoreGraphics\n"
+            f"CGDisplaySetDisplayBrightness(CGMainDisplayID(), {frac})"
+        )
+        ok, _ = self._run(["swift", "-"], input=swift_src)
+        if ok:
+            logging.info(f"Brightness → {level}% via swift/CoreGraphics")
             return True
 
+        # Strategy 3: graceful no-op
         logging.warning(
-            "macOS brightness control unavailable. "
-            "Install with: brew install brightness"
+            f"macOS brightness control unavailable (level={level}). "
+            "Install 'brightness': brew install brightness   "
+            "  — OR —   install Xcode CLT: xcode-select --install"
         )
         return False
 
     def get_brightness(self) -> int:
-        """Get current brightness (0-100) via the 'brightness' CLI."""
-        try:
-            result = subprocess.run(
-                ["brightness", "-l"],
-                capture_output=True,
-                text=True
-            )
-            # Output contains lines like: "display 0: brightness 0.7500"
-            for line in result.stdout.splitlines():
-                if "brightness" in line:
-                    parts = line.strip().split()
-                    val = float(parts[-1])
-                    return int(val * 100)
-        except Exception:
-            pass
+        """Get current brightness (0-100). Returns 100 if unavailable."""
+        # Try 'brightness' CLI
+        bin_path = self._find_brightness_bin()
+        if bin_path:
+            ok, out = self._run([bin_path, "-l"])
+            if ok:
+                for line in out.splitlines():
+                    if "brightness" in line:
+                        try:
+                            val = float(line.strip().split()[-1])
+                            return int(val * 100)
+                        except (ValueError, IndexError):
+                            pass
         return 100  # Safe default
