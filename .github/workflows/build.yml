@@ -250,10 +250,10 @@ jobs:
         run: |
           mkdir -p SuperPortable/portablevideoalarm
           
-          # Copy media and sequences from the repository
-          cp -r audio SuperPortable/portablevideoalarm/
-          cp -r video SuperPortable/portablevideoalarm/
-          cp -r sequences SuperPortable/portablevideoalarm/
+          # Copy media and sequences from the repository (if they exist)
+          if [ -d audio ]; then cp -r audio SuperPortable/portablevideoalarm/; else mkdir -p SuperPortable/portablevideoalarm/audio; fi
+          if [ -d video ]; then cp -r video SuperPortable/portablevideoalarm/; else mkdir -p SuperPortable/portablevideoalarm/video; fi
+          if [ -d sequences ]; then cp -r sequences SuperPortable/portablevideoalarm/; else mkdir -p SuperPortable/portablevideoalarm/sequences; fi
           
           # Copy executables into the unified folder
           cp release_artifacts/PyCronVideoAlarm_Linux/PyCronVideoAlarm_Linux SuperPortable/portablevideoalarm/
@@ -285,8 +285,10 @@ jobs:
       - name: Generate Release Info
         id: release_info
         run: |
-          # Use the same unified timestamp generated at the start
+          # Use slash instead of underscore for the user-facing date
+          DATE_DISPLAY=$(date +'%Y-%m-%d %H:%M EST')
           DATE_STR="${{ needs.check-trigger.outputs.build_timestamp }}"
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
           
           MSG="${{ github.event.head_commit.message }}"
           # Strip the first word "release" and any leading colon/space/dash
@@ -294,6 +296,8 @@ jobs:
           
           echo "tag=v${DATE_STR}" >> $GITHUB_OUTPUT
           echo "title=${DATE_STR} ${CLEAN_MSG}" >> $GITHUB_OUTPUT
+          echo "date_display=${DATE_DISPLAY}" >> $GITHUB_OUTPUT
+          echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
@@ -308,8 +312,8 @@ jobs:
           body: |
             Automated Multi-Platform Release
             
-            **Release Date:** $(date +'%Y-%m-%d %H:%M EST')
-            **Commit Hash:** ${{ github.sha }}
+            **Release Date:** ${{ steps.release_info.outputs.date_display }}
+            **Commit Hash:** ${{ steps.release_info.outputs.short_sha }}
             
             Included Files:
             - **PyCronVideoAlarm_Linux**: Linux standalone binary
