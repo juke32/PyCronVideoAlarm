@@ -11,18 +11,24 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       should_build: ${{ steps.check.outputs.should_build }}
+      is_release: ${{ steps.check.outputs.is_release }}
     steps:
-      - name: Check commit/PR message for 'build'
+      - name: Check commit/PR message
         id: check
         env:
           COMMIT_MSG: ${{ github.event.head_commit.message }}
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
           MSG=$(echo "${COMMIT_MSG}${PR_TITLE}" | tr '[:upper:]' '[:lower:]')
-          if [[ "$MSG" == build* ]]; then
+          if [[ "$MSG" == release* ]]; then
             echo "should_build=true" >> $GITHUB_OUTPUT
+            echo "is_release=true" >> $GITHUB_OUTPUT
+          elif [[ "$MSG" == build* ]]; then
+            echo "should_build=true" >> $GITHUB_OUTPUT
+            echo "is_release=false" >> $GITHUB_OUTPUT
           else
             echo "should_build=false" >> $GITHUB_OUTPUT
+            echo "is_release=false" >> $GITHUB_OUTPUT
           fi
 
   build-linux:
@@ -219,3 +225,73 @@ jobs:
       with:
         name: PyCronVideoAlarm_macOS
         path: dist/PyCronVideoAlarm_macOS.dmg
+
+  create-release:
+    runs-on: ubuntu-latest
+    needs: [check-trigger, build-linux, build-windows, build-macos]
+    if: needs.check-trigger.outputs.is_release == 'true'
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release_artifacts
+
+      - name: Create Multi-Platform Portable Bundle
+        run: |
+          mkdir -p SuperPortable/portablevideoalarm
+          mkdir -p SuperPortable/portablevideoalarm/audio
+          mkdir -p SuperPortable/portablevideoalarm/video
+          mkdir -p SuperPortable/portablevideoalarm/sequences
+          
+          # Copy executables into the unified folder
+          cp release_artifacts/PyCronVideoAlarm_Linux/PyCronVideoAlarm_Linux SuperPortable/portablevideoalarm/
+          cp release_artifacts/PyCronVideoAlarm_Windows/PyCronVideoAlarm_Windows.exe SuperPortable/portablevideoalarm/
+          cp release_artifacts/PyCronVideoAlarm_macOS/PyCronVideoAlarm_macOS.dmg SuperPortable/portablevideoalarm/
+          
+          # Include LICENSE
+          cp LICENSE SuperPortable/portablevideoalarm/
+          
+          # Create a helper README for the portable pack
+          echo "PyCron Video Alarm - Super Portable Pack" > SuperPortable/portablevideoalarm/README_Portable.txt
+          echo "==========================================" >> SuperPortable/portablevideoalarm/README_Portable.txt
+          echo "This folder contains executables for Linux, Windows, and macOS." >> SuperPortable/portablevideoalarm/README_Portable.txt
+          echo "" >> SuperPortable/portablevideoalarm/README_Portable.txt
+          echo "1. Run the version for your OS." >> SuperPortable/portablevideoalarm/README_Portable.txt
+          echo "2. Your settings, logs, and media will be stored in this shared folder." >> SuperPortable/portablevideoalarm/README_Portable.txt
+          
+          cd SuperPortable
+          zip -r ../PyCronVideoAlarm_MultiPlatform_Portable.zip portablevideoalarm
+
+      - name: Prepare Assets for Release
+        run: |
+          mkdir staging
+          cp release_artifacts/PyCronVideoAlarm_Linux/PyCronVideoAlarm_Linux staging/
+          cp release_artifacts/PyCronVideoAlarm_Windows/PyCronVideoAlarm_Windows.exe staging/
+          cp release_artifacts/PyCronVideoAlarm_macOS/PyCronVideoAlarm_macOS.dmg staging/
+          cp PyCronVideoAlarm_MultiPlatform_Portable.zip staging/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ github.run_number }}_${{ github.sha }}
+          name: Release ${{ github.run_number }}
+          files: |
+            staging/PyCronVideoAlarm_Linux
+            staging/PyCronVideoAlarm_Windows.exe
+            staging/PyCronVideoAlarm_macOS.dmg
+            staging/PyCronVideoAlarm_MultiPlatform_Portable.zip
+          body: |
+            Automated Release for commit ${{ github.sha }}
+            
+            Included Files:
+            - **PyCronVideoAlarm_Linux**: Linux standalone binary
+            - **PyCronVideoAlarm_Windows.exe**: Windows standalone executable
+            - **PyCronVideoAlarm_macOS.dmg**: macOS Disk Image (drag .app to Applications)
+            - **PyCronVideoAlarm_MultiPlatform_Portable.zip**: All-in-one pack with shared media directories.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

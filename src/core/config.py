@@ -7,7 +7,12 @@ def get_app_data_dir():
     """Return the platform-specific directory for persistent application data."""
     if getattr(sys, 'frozen', False):
         # Running as a PyInstaller bundle (portable mode)
+        # On Windows/Linux, sys.executable is the binary itself.
+        # On macOS Bundle, sys.executable is App.app/Contents/MacOS/binary
         path = os.path.dirname(sys.executable)
+        if sys.platform == 'darwin' and '.app/Contents/MacOS' in path:
+            # Move up 3 more levels: MacOS -> Contents -> App -> ParentFolder
+            path = os.path.dirname(os.path.dirname(os.path.dirname(path)))
     else:
         # Running as a normal Python script from source
         # config.py is in src/core/, so the root is 3 levels up
