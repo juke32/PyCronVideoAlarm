@@ -3,7 +3,7 @@ audio/YOURBESTFRIENDJIPPY-BEATTAPE36.mp3
 build/
 dist/
 reference/
-audio/
-video/
-sequences/
+/audio/
+/video/
+/sequences/
 __pycache__/

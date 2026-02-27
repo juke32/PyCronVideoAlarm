@@ -1,0 +1,29 @@
+{
+    "name": "Mew",
+    "actions": [
+        {
+            "type": "wait_action",
+            "config": {
+                "duration": 5,
+                "#comment": "Wait for X seconds"
+            }
+        },
+        {
+            "type": "play_audio",
+            "config": {
+                "file": "audio/example.mp3",
+                "gain": 0,
+                "system_volume": null,
+                "from": "00:00",
+                "to": "00:00",
+                "#comment": "gain: VLC amplification in dB (-50 to +50). system_volume: set system vol (0-100, null=no change)"
+            }
+        },
+        {
+            "type": "kill_black_screen",
+            "config": {
+                "#comment": "Close the black overlay window"
+            }
+        }
+    ]
+}

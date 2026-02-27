@@ -1,0 +1,280 @@
+{
+    "name": "test_all",
+    "actions": [
+        {
+            "type": "play_audio",
+            "config": {
+                "file": "audio/numbers/00.mp3",
+                "gain": 0,
+                "system_volume": null,
+                "from": "00:00",
+                "to": "00:00",
+                "#comment": "gain: Audio amplification in dB (-50 to +50). system_volume: set system vol (0-100, null=no change)"
+            }
+        },
+        {
+            "type": "play_video",
+            "config": {
+                "file": "video/example.mp4",
+                "fullscreen": true,
+                "gain": 0,
+                "system_volume": null,
+                "from": "00:00",
+                "to": "00:01",
+                "#comment": "gain: Audio amplification in dB (-50 to +50). system_volume: set system vol (0-100, null=no change)"
+            }
+        },
+        {
+            "type": "play_audio",
+            "config": {
+                "file": "audio/example.mp3",
+                "gain": 0,
+                "system_volume": null,
+                "from": "00:00",
+                "to": "00:00",
+                "#comment": "gain: Audio amplification in dB (-50 to +50). system_volume: set system vol (0-100, null=no change)"
+            }
+        },
+        {
+            "type": "play_video",
+            "config": {
+                "file": "video/example.mp4",
+                "fullscreen": true,
+                "gain": 0,
+                "system_volume": null,
+                "from": "00:07",
+                "to": "00:00",
+                "#comment": "gain: Audio amplification in dB (-50 to +50). system_volume: set system vol (0-100, null=no change)"
+            }
+        },
+        {
+            "type": "wait_action",
+            "config": {
+                "duration": 2,
+                "#comment": "Wait for X seconds"
+            }
+        },
+        {
+            "type": "play_audio",
+            "config": {
+                "file": "audio/numbers/10.mp3",
+                "gain": 10,
+                "system_volume": null,
+                "from": "00:00",
+                "to": "00:00",
+                "#comment": "gain: Audio amplification in dB (-50 to +50). system_volume: set system vol (0-100, null=no change)"
+            }
+        },
+        {
+            "type": "play_video",
+            "config": {
+                "file": "video/example.mp4",
+                "fullscreen": true,
+                "gain": 10,
+                "system_volume": null,
+                "from": "00:00",
+                "to": "00:01",
+                "#comment": "gain: Audio amplification in dB (-50 to +50). system_volume: set system vol (0-100, null=no change)"
+            }
+        },
+        {
+            "type": "play_audio",
+            "config": {
+                "file": "audio/example.mp3",
+                "gain": 10,
+                "system_volume": null,
+                "from": "00:00",
+                "to": "00:00",
+                "#comment": "gain: Audio amplification in dB (-50 to +50). system_volume: set system vol (0-100, null=no change)"
+            }
+        },
+        {
+            "type": "play_video",
+            "config": {
+                "file": "video/example.mp4",
+                "fullscreen": true,
+                "gain": 10,
+                "system_volume": null,
+                "from": "00:07",
+                "to": "00:00",
+                "#comment": "gain: Audio amplification in dB (-50 to +50). system_volume: set system vol (0-100, null=no change)"
+            }
+        },
+        {
+            "type": "wait_action",
+            "config": {
+                "duration": 2,
+                "#comment": "Wait for X seconds"
+            }
+        },
+        {
+            "type": "play_audio",
+            "config": {
+                "file": "audio/numbers/30.mp3",
+                "gain": 30,
+                "system_volume": null,
+                "from": "00:00",
+                "to": "00:00",
+                "#comment": "gain: Audio amplification in dB (-50 to +50). system_volume: set system vol (0-100, null=no change)"
+            }
+        },
+        {
+            "type": "play_video",
+            "config": {
+                "file": "video/example.mp4",
+                "fullscreen": true,
+                "gain": 30,
+                "system_volume": null,
+                "from": "00:00",
+                "to": "00:01",
+                "#comment": "gain: Audio amplification in dB (-50 to +50). system_volume: set system vol (0-100, null=no change)"
+            }
+        },
+        {
+            "type": "play_audio",
+            "config": {
+                "file": "audio/example.mp3",
+                "gain": 30,
+                "system_volume": null,
+                "from": "00:00",
+                "to": "00:00",
+                "#comment": "gain: Audio amplification in dB (-50 to +50). system_volume: set system vol (0-100, null=no change)"
+            }
+        },
+        {
+            "type": "play_video",
+            "config": {
+                "file": "video/example.mp4",
+                "fullscreen": true,
+                "gain": 30,
+                "system_volume": null,
+                "from": "00:07",
+                "to": "00:00",
+                "#comment": "gain: Audio amplification in dB (-50 to +50). system_volume: set system vol (0-100, null=no change)"
+            }
+        },
+        {
+            "type": "wait_action",
+            "config": {
+                "duration": 2,
+                "#comment": "Wait for X seconds"
+            }
+        },
+        {
+            "type": "kill_black_screen",
+            "config": {
+                "#comment": "Close the black overlay window"
+            }
+        },
+        {
+            "type": "play_audio",
+            "config": {
+                "file": "audio/example.mp3",
+                "gain": 0,
+                "system_volume": null,
+                "from": "00:00",
+                "to": "00:00",
+                "#comment": "gain: Audio amplification in dB (-50 to +50). system_volume: set system vol (0-100, null=no change)"
+            }
+        },
+        {
+            "type": "monitor_control",
+            "config": {
+                "state": "off",
+                "#comment": "Turn monitor 'on' or 'off'"
+            }
+        },
+        {
+            "type": "play_audio",
+            "config": {
+                "file": "audio/example.mp3",
+                "gain": 0,
+                "system_volume": null,
+                "from": "00:00",
+                "to": "00:00",
+                "#comment": "gain: Audio amplification in dB (-50 to +50). system_volume: set system vol (0-100, null=no change)"
+            }
+        },
+        {
+            "type": "monitor_control",
+            "config": {
+                "state": "on",
+                "#comment": "Turn monitor 'on' or 'off'"
+            }
+        },
+        {
+            "type": "play_audio",
+            "config": {
+                "file": "audio/example.mp3",
+                "gain": 0,
+                "system_volume": null,
+                "from": "00:00",
+                "to": "00:00",
+                "#comment": "gain: Audio amplification in dB (-50 to +50). system_volume: set system vol (0-100, null=no change)"
+            }
+        },
+        {
+            "type": "wait_action",
+            "config": {
+                "duration": 2,
+                "#comment": "Wait for X seconds"
+            }
+        },
+        {
+            "type": "set_brightness",
+            "config": {
+                "level": 100,
+                "#comment": "Set screen brightness (100)"
+            }
+        },
+        {
+            "type": "set_system_volume",
+            "config": {
+                "volume": 100,
+                "#comment": "Set system volume (100)"
+            }
+        },
+        {
+            "type": "wait_action",
+            "config": {
+                "duration": 2,
+                "#comment": "Wait for X seconds"
+            }
+        },
+        {
+            "type": "set_brightness",
+            "config": {
+                "level": 0,
+                "#comment": "Set screen brightness (0)"
+            }
+        },
+        {
+            "type": "set_system_volume",
+            "config": {
+                "volume": 0,
+                "#comment": "Set system volume (0)"
+            }
+        },
+        {
+            "type": "wait_action",
+            "config": {
+                "duration": 2,
+                "#comment": "Wait for X seconds"
+            }
+        },
+        {
+            "type": "set_brightness",
+            "config": {
+                "level": 20,
+                "#comment": "Set screen brightness (20)"
+            }
+        },
+        {
+            "type": "set_system_volume",
+            "config": {
+                "volume": 20,
+                "#comment": "Set system volume (20)"
+            }
+        }
+    ]
+}
