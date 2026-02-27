@@ -144,7 +144,7 @@ jobs:
         path: dist/PyCronVideoAlarm_Windows.exe
 
   build-macos:
-    runs-on: macos-latest
+    runs-on: macos-13
     needs: check-trigger
     if: needs.check-trigger.outputs.should_build == 'true'
     steps:
@@ -178,7 +178,7 @@ jobs:
         mv build_tmp/icon.icns icons/alarm_icon7.icns
         rm -rf build_tmp
 
-    - name: Build with PyInstaller
+    - name: Build with PyInstaller (Universal)
       run: |
         TS="${{ needs.check-trigger.outputs.build_timestamp }}"
         BUILD_DATE=$(date +'%Y-%m-%d %H:%M EST')
@@ -189,6 +189,7 @@ jobs:
           --name "PyCronVideoAlarm" \
           --icon "icons/alarm_icon7.icns" \
           --osx-bundle-identifier "com.juke32.pycronvideoalarm" \
+          --target-arch universal2 \
           --add-data "src:src" \
           --add-data "icons/alarm_icon7.icns:." \
           --add-data "icons/alarm_icon7.png:." \
@@ -220,7 +221,7 @@ jobs:
             exit 1
         fi
 
-    - name: Create macOS DMG
+    - name: Create macOS DMG (Universal)
       run: |
         cd dist
         hdiutil create -volname "PyCronVideoAlarm" -srcfolder "PyCronVideoAlarm.app" -ov -format UDZO "PyCronVideoAlarm_macOS.dmg"
@@ -332,7 +333,7 @@ jobs:
             Included Files:
             - **PyCronVideoAlarm_Linux**: Linux standalone binary
             - **PyCronVideoAlarm_Windows.exe**: Windows standalone executable
-            - **PyCronVideoAlarm_macOS.dmg**: macOS Disk Image (drag .app to Applications)
+            - **PyCronVideoAlarm_macOS.dmg**: macOS Universal Binary – works on Intel and Apple Silicon (M1/M2/M3)
             - **PyCronVideoAlarm_MultiPlatform_Portable.zip**: All-in-one pack with shared media directories. (download this if this is your first time using the app)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
