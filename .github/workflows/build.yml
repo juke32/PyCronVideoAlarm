@@ -221,6 +221,11 @@ jobs:
             exit 1
         fi
 
+    - name: Ad-hoc Code Sign
+      run: |
+        xattr -cr dist/PyCronVideoAlarm.app
+        codesign --force --deep --sign - dist/PyCronVideoAlarm.app
+
     - name: Create macOS DMG (Universal)
       run: |
         cd dist

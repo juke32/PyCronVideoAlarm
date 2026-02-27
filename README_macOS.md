@@ -25,7 +25,10 @@ Detailed macOS-specific setup for **PyCron Video Alarm Manager**.
 1. Download `PyCronVideoAlarm_macOS.dmg` from the latest release.
 2. Double-click the `.dmg` file to mount it.
 3. Drag the **PyCronVideoAlarm.app** into your **Applications** folder OR into your custom **Portable Base Folder**.
-4. Launch the app. 
+4. **First launch — bypass Gatekeeper** (the app is not Apple-notarized):
+   - **Right-click** the app → **Open** → click **Open** in the dialog.  
+   - *Or:* Go to **System Settings → Privacy & Security**, scroll down, and click **Open Anyway** next to the PyCronVideoAlarm entry.
+   - You only need to do this once.
 
 > [!TIP]
 > **Portable Mode:** On macOS, the app is designed to be portable. It will automatically look for its `audio/`, `video/`, and `sequences/` folders in the same directory where you placed the `.app` bundle.
