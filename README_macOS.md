@@ -20,7 +20,7 @@ Detailed macOS-specific setup for **PyCron Video Alarm Manager**.
    ```bash
    brew install brightness
    ```
-   If not installed, the app automatically falls back to a `swift` one-liner using CoreGraphics (requires Xcode Command Line Tools: `xcode-select --install`). Brightness actions are never crash — they log a warning and skip if neither tool is available.
+   This requires **only Homebrew** — no Xcode, no developer tools. The app will try this automatically. If it's not installed, brightness actions are silently skipped.
 
 ## 🚀 Setting Up the Application
 
@@ -75,10 +75,31 @@ On macOS, scheduling uses **launchd** — the native macOS task scheduler — vi
 
 | Problem | Solution |
 |---|---|
-| Alarm didn't fire | Ensure the Mac was awake at alarm time. Check `~/Library/LaunchAgents/` for your plist and `launchctl list \| grep pycronvideoalarm`. |
-| Brightness does nothing | Install `brew install brightness` OR `xcode-select --install` for the swift fallback. |
+| Alarm didn't fire | Ensure the Mac was awake at alarm time. Check `~/Library/LaunchAgents/` for your plist (see below). |
+| **Failed to remove alarm** | See manual removal steps below. |
+| Brightness does nothing | Run `brew install brightness` (no developer tools needed — only Homebrew). |
 | Video won't play | Ensure VLC is installed: `brew install --cask vlc`. |
 | Wrong file paths | Ensure `video/`, `audio/`, and `sequences/` folders are in the **same folder as the `.app` bundle**, not inside it. |
+
+### 🔧 Manually removing a stuck alarm
+
+Alarms are `.plist` files in `~/Library/LaunchAgents/`. If the app can't remove one:
+
+```bash
+# List all PyCronVideoAlarm alarms
+ls ~/Library/LaunchAgents/com.juke32.pycronvideoalarm.*.plist
+
+# Remove a specific one (replace <uuid> with the actual filename)
+launchctl unload ~/Library/LaunchAgents/com.juke32.pycronvideoalarm.<uuid>.plist
+rm ~/Library/LaunchAgents/com.juke32.pycronvideoalarm.<uuid>.plist
+
+# Or nuke ALL alarms at once (emergency reset)
+for f in ~/Library/LaunchAgents/com.juke32.pycronvideoalarm.*.plist; do
+  launchctl unload "$f" && rm "$f"
+done
+```
+
+You can also open `~/Library/LaunchAgents/` in Finder (**Go → Go to Folder…** → paste the path) and delete the `.plist` files manually.
 
 Enable **Settings → Logging** and check the logs folder for detailed error output.
 

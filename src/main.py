@@ -34,6 +34,17 @@ def main():
         except Exception:
             pass
 
+    # macOS frozen app: set CWD to the folder containing the .app bundle.
+    # Without this, macOS launches apps with CWD="/", so all relative paths
+    # (video/, audio/, settings.json) resolve to root instead of the portable folder.
+    if getattr(sys, 'frozen', False) and sys.platform == 'darwin':
+        import os as _os
+        exe = _os.path.abspath(sys.executable)
+        if '.app/Contents/MacOS' in exe:
+            # exe = /path/to/App.app/Contents/MacOS/<binary>  →  dirname x4 = /path/to/
+            portable_root = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.dirname(exe))))
+            _os.chdir(portable_root)
+
     setup_logging()
     parser = argparse.ArgumentParser(description="Video Alarm Rebuilt")
     parser.add_argument("--test-alarm", action="store_true", help="Trigger alarm immediately for testing")

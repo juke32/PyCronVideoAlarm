@@ -189,7 +189,7 @@ jobs:
         echo "Built: $BUILD_DATE" > version.txt
         echo "Archive: ${TS}_PyCronVideoAlarm_macOS" >> version.txt
 
-        arch -x86_64 python3.11 -m PyInstaller --noconfirm --onefile --windowed \
+        arch -x86_64 python3.11 -m PyInstaller --noconfirm --onedir --windowed \
           --name "PyCronVideoAlarm" \
           --icon "icons/alarm_icon7.icns" \
           --osx-bundle-identifier "com.juke32.pycronvideoalarm" \
