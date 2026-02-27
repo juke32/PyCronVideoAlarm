@@ -12,6 +12,7 @@ jobs:
     outputs:
       should_build: ${{ steps.check.outputs.should_build }}
       is_release: ${{ steps.check.outputs.is_release }}
+      build_timestamp: ${{ steps.check.outputs.build_timestamp }}
     steps:
       - name: Check commit/PR message
         id: check
@@ -20,6 +21,12 @@ jobs:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
           MSG=$(echo "${COMMIT_MSG}${PR_TITLE}" | tr '[:upper:]' '[:lower:]')
+          
+          # Generate a single unified timestamp (Eastern Time)
+          export TZ='America/New_York'
+          TS=$(date +'%Y-%m-%d_%H%M')
+          echo "build_timestamp=$TS" >> $GITHUB_OUTPUT
+
           if [[ "$MSG" == release* ]]; then
             echo "should_build=true" >> $GITHUB_OUTPUT
             echo "is_release=true" >> $GITHUB_OUTPUT
@@ -56,10 +63,9 @@ jobs:
 
     - name: Build with PyInstaller
       run: |
-        export TZ='America/New_York'
-        TS=$(date +'%Y-%m-%d_%H%M')
-        BUILD_DATE=$(date +'%Y-%m-%d %H:%M EST')
-        echo "Built: $BUILD_DATE" > version.txt
+        TS="${{ needs.check-trigger.outputs.build_timestamp }}"
+        BUILD_DATE=$(echo "$TS" | sed 's/_/ /' | sed 's/\(.*\)\(..\)/\1:\2/')
+        echo "Built: ${BUILD_DATE} EST" > version.txt
         echo "Archive: ${TS}_PyCronVideoAlarm_Linux" >> version.txt
 
         pyinstaller --noconfirm --onefile --windowed \
@@ -106,9 +112,9 @@ jobs:
 
     - name: Build with PyInstaller
       run: |
+        $ts = "${{ needs.check-trigger.outputs.build_timestamp }}"
         $tz = [System.TimeZoneInfo]::FindSystemTimeZoneById("Eastern Standard Time")
         $est = [System.TimeZoneInfo]::ConvertTimeFromUtc((Get-Date).ToUniversalTime(), $tz)
-        $ts = $est.ToString('yyyy-MM-dd_HHmm')
         "Built: $($est.ToString('yyyy-MM-dd HH:mm')) EST" | Out-File -FilePath version.txt -Encoding utf8
         "Archive: ${ts}_PyCronVideoAlarm_Windows.exe" | Add-Content -Path version.txt -Encoding utf8
 
@@ -174,8 +180,7 @@ jobs:
 
     - name: Build with PyInstaller
       run: |
-        export TZ='America/New_York'
-        TS=$(date +'%Y-%m-%d_%H%M')
+        TS="${{ needs.check-trigger.outputs.build_timestamp }}"
         BUILD_DATE=$(date +'%Y-%m-%d %H:%M EST')
         echo "Built: $BUILD_DATE" > version.txt
         echo "Archive: ${TS}_PyCronVideoAlarm_macOS" >> version.txt
@@ -275,18 +280,34 @@ jobs:
           cp release_artifacts/PyCronVideoAlarm_macOS/PyCronVideoAlarm_macOS.dmg staging/
           cp PyCronVideoAlarm_MultiPlatform_Portable.zip staging/
 
+      - name: Generate Release Info
+        id: release_info
+        run: |
+          # Use the same unified timestamp generated at the start
+          DATE_STR="${{ needs.check-trigger.outputs.build_timestamp }}"
+          
+          MSG="${{ github.event.head_commit.message }}"
+          # Strip the first word "release" and any leading colon/space/dash
+          CLEAN_MSG=$(echo "$MSG" | sed -E 's/^release[:[:space:]-]*//i' | tr -d '\n' | tr -s ' ')
+          
+          echo "tag=v${DATE_STR}" >> $GITHUB_OUTPUT
+          echo "title=${DATE_STR} ${CLEAN_MSG}" >> $GITHUB_OUTPUT
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v${{ github.run_number }}_${{ github.sha }}
-          name: Release ${{ github.run_number }}
+          tag_name: ${{ steps.release_info.outputs.tag }}
+          name: ${{ steps.release_info.outputs.title }}
           files: |
             staging/PyCronVideoAlarm_Linux
             staging/PyCronVideoAlarm_Windows.exe
             staging/PyCronVideoAlarm_macOS.dmg
             staging/PyCronVideoAlarm_MultiPlatform_Portable.zip
           body: |
-            Automated Release for commit ${{ github.sha }}
+            Automated Multi-Platform Release
+            
+            **Release Date:** $(date +'%Y-%m-%d %H:%M EST')
+            **Commit Hash:** ${{ github.sha }}
             
             Included Files:
             - **PyCronVideoAlarm_Linux**: Linux standalone binary
