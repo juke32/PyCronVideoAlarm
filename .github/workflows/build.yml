@@ -153,17 +153,17 @@ jobs:
     - name: Install Rosetta 2
       run: softwareupdate --install-rosetta --agree-to-license || true
 
-    - name: Set up Python 3.11 (x86_64 for cross-platform compatibility)
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.11"
-        architecture: x64
-
-    - name: Install dependencies
+    - name: Install Python 3.11 x86_64 (python.org universal2 installer)
       run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install pyinstaller
+        curl -L "https://www.python.org/ftp/python/3.11.9/python-3.11.9-macos11.pkg" -o python.pkg
+        sudo installer -pkg python.pkg -target /
+        echo "/Library/Frameworks/Python.framework/Versions/3.11/bin" >> $GITHUB_PATH
+
+    - name: Install dependencies (x86_64 via Rosetta)
+      run: |
+        arch -x86_64 python3.11 -m pip install --upgrade pip
+        arch -x86_64 python3.11 -m pip install -r requirements.txt
+        arch -x86_64 python3.11 -m pip install pyinstaller
 
     - name: Generate macOS .icns file
       run: |
@@ -182,18 +182,17 @@ jobs:
         mv build_tmp/icon.icns icons/alarm_icon7.icns
         rm -rf build_tmp
 
-    - name: Build with PyInstaller (Universal)
+    - name: Build with PyInstaller (x86_64 via Rosetta)
       run: |
         TS="${{ needs.check-trigger.outputs.build_timestamp }}"
         BUILD_DATE=$(date +'%Y-%m-%d %H:%M EST')
         echo "Built: $BUILD_DATE" > version.txt
         echo "Archive: ${TS}_PyCronVideoAlarm_macOS" >> version.txt
 
-        pyinstaller --noconfirm --onefile --windowed \
+        arch -x86_64 python3.11 -m PyInstaller --noconfirm --onefile --windowed \
           --name "PyCronVideoAlarm" \
           --icon "icons/alarm_icon7.icns" \
           --osx-bundle-identifier "com.juke32.pycronvideoalarm" \
-          --target-arch x86_64 \
           --add-data "src:src" \
           --add-data "icons/alarm_icon7.icns:." \
           --add-data "icons/alarm_icon7.png:." \
