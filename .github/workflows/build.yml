@@ -11,18 +11,31 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       should_build: ${{ steps.check.outputs.should_build }}
+      is_release: ${{ steps.check.outputs.is_release }}
+      build_timestamp: ${{ steps.check.outputs.build_timestamp }}
     steps:
-      - name: Check commit/PR message for 'build'
+      - name: Check commit/PR message for 'build' or 'release'
         id: check
         env:
           COMMIT_MSG: ${{ github.event.head_commit.message }}
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
           MSG=$(echo "${COMMIT_MSG}${PR_TITLE}" | tr '[:upper:]' '[:lower:]')
-          if [[ "$MSG" == build* ]]; then
+          
+          # Generate a single unified timestamp (Eastern Time)
+          export TZ='America/New_York'
+          TS=$(date +'%Y-%m-%d_%H%M')
+          echo "build_timestamp=$TS" >> $GITHUB_OUTPUT
+
+          if [[ "$MSG" == release* ]]; then
             echo "should_build=true" >> $GITHUB_OUTPUT
+            echo "is_release=true" >> $GITHUB_OUTPUT
+          elif [[ "$MSG" == build* ]]; then
+            echo "should_build=true" >> $GITHUB_OUTPUT
+            echo "is_release=false" >> $GITHUB_OUTPUT
           else
             echo "should_build=false" >> $GITHUB_OUTPUT
+            echo "is_release=false" >> $GITHUB_OUTPUT
           fi
 
   build-linux:
@@ -51,7 +64,9 @@ jobs:
     - name: Build with PyInstaller
       run: |
         export TZ='America/New_York'
-        TS=$(date +'%Y-%m-%d_%H%M')
+        TS="${{ needs.check-trigger.outputs.build_timestamp }}"
+        # Use the provided timestamp if set by the trigger, otherwise fallback to now (for older triggers that might not supply it)
+        if [ -z "$TS" ]; then TS=$(date +'%Y-%m-%d_%H%M'); fi
         BUILD_DATE=$(date +'%Y-%m-%d %H:%M EST')
         echo "Built: $BUILD_DATE" > version.txt
         echo "Archive: ${TS}_PyCronVideoAlarm_Linux" >> version.txt
@@ -100,9 +115,10 @@ jobs:
 
     - name: Build with PyInstaller
       run: |
+        $ts = "${{ needs.check-trigger.outputs.build_timestamp }}"
+        if ([string]::IsNullOrEmpty($ts)) { $ts = $(Get-Date).ToString('yyyy-MM-dd_HHmm') }
         $tz = [System.TimeZoneInfo]::FindSystemTimeZoneById("Eastern Standard Time")
         $est = [System.TimeZoneInfo]::ConvertTimeFromUtc((Get-Date).ToUniversalTime(), $tz)
-        $ts = $est.ToString('yyyy-MM-dd_HHmm')
         "Built: $($est.ToString('yyyy-MM-dd HH:mm')) EST" | Out-File -FilePath version.txt -Encoding utf8
         "Archive: ${ts}_PyCronVideoAlarm_Windows.exe" | Add-Content -Path version.txt -Encoding utf8
 
@@ -130,3 +146,104 @@ jobs:
       with:
         name: PyCronVideoAlarm_Windows
         path: dist/PyCronVideoAlarm_Windows.exe
+
+  create-release:
+    runs-on: ubuntu-latest
+    needs: [check-trigger, build-linux, build-windows]
+    if: needs.check-trigger.outputs.is_release == 'true'
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release_artifacts
+
+      - name: Create Multi-Platform Portable Bundle
+        run: |
+          mkdir -p SuperPortable/portablevideoalarm
+          
+          # Intelligent Media Finder: Checks root and subfolders, case-insensitive
+          # 1. Look for sequences
+          if [ -d sequences ]; then cp -r sequences SuperPortable/portablevideoalarm/; 
+          elif [ -d PortableVideoAlarm/sequences ]; then cp -r PortableVideoAlarm/sequences SuperPortable/portablevideoalarm/;
+          elif [ -d portablevideoalarm/sequences ]; then cp -r portablevideoalarm/sequences SuperPortable/portablevideoalarm/;
+          else mkdir -p SuperPortable/portablevideoalarm/sequences; fi
+
+          # 2. Look for audio
+          if [ -d audio ]; then cp -r audio SuperPortable/portablevideoalarm/;
+          elif [ -d PortableVideoAlarm/audio ]; then cp -r PortableVideoAlarm/audio SuperPortable/portablevideoalarm/;
+          elif [ -d portablevideoalarm/audio ]; then cp -r portablevideoalarm/audio SuperPortable/portablevideoalarm/;
+          else mkdir -p SuperPortable/portablevideoalarm/audio; fi
+
+          # 3. Look for video
+          if [ -d video ]; then cp -r video SuperPortable/portablevideoalarm/;
+          elif [ -d PortableVideoAlarm/video ]; then cp -r PortableVideoAlarm/video SuperPortable/portablevideoalarm/;
+          elif [ -d portablevideoalarm/video ]; then cp -r portablevideoalarm/video SuperPortable/portablevideoalarm/;
+          else mkdir -p SuperPortable/portablevideoalarm/video; fi
+          
+          # Copy executables into the unified folder
+          cp release_artifacts/PyCronVideoAlarm_Linux/PyCronVideoAlarm_Linux SuperPortable/portablevideoalarm/
+          cp release_artifacts/PyCronVideoAlarm_Windows/PyCronVideoAlarm_Windows.exe SuperPortable/portablevideoalarm/
+          
+          # Include LICENSE
+          cp LICENSE SuperPortable/portablevideoalarm/
+          
+          # Create a helper README for the portable pack
+          echo "PyCron Video Alarm - Super Portable Pack" > SuperPortable/portablevideoalarm/README_Portable.txt
+          echo "==========================================" >> SuperPortable/portablevideoalarm/README_Portable.txt
+          echo "This folder contains executables for Linux and Windows." >> SuperPortable/portablevideoalarm/README_Portable.txt
+          echo "" >> SuperPortable/portablevideoalarm/README_Portable.txt
+          echo "1. Run the version for your OS." >> SuperPortable/portablevideoalarm/README_Portable.txt
+          echo "2. Your settings, logs, and media will be stored in this shared folder." >> SuperPortable/portablevideoalarm/README_Portable.txt
+          
+          cd SuperPortable
+          zip -r ../PyCronVideoAlarm_MultiPlatform_Portable.zip portablevideoalarm
+
+      - name: Prepare Assets for Release
+        run: |
+          mkdir staging
+          cp release_artifacts/PyCronVideoAlarm_Linux/PyCronVideoAlarm_Linux staging/
+          cp release_artifacts/PyCronVideoAlarm_Windows/PyCronVideoAlarm_Windows.exe staging/
+          cp PyCronVideoAlarm_MultiPlatform_Portable.zip staging/
+
+      - name: Generate Release Info
+        id: release_info
+        run: |
+          DATE_DISPLAY=$(date +'%Y-%m-%d %H:%M EST')
+          DATE_STR="${{ needs.check-trigger.outputs.build_timestamp }}"
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          
+          MSG="${{ github.event.head_commit.message }}"
+          # Strip the first word "release" and any leading colon/space/dash
+          CLEAN_MSG=$(echo "$MSG" | sed -E 's/^release[:[:space:]-]*//i' | tr -d '\n' | tr -s ' ')
+          
+          echo "tag=v${DATE_STR}" >> $GITHUB_OUTPUT
+          echo "title=${DATE_STR} ${CLEAN_MSG}" >> $GITHUB_OUTPUT
+          echo "date_display=${DATE_DISPLAY}" >> $GITHUB_OUTPUT
+          echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.release_info.outputs.tag }}
+          name: ${{ steps.release_info.outputs.title }}
+          files: |
+            staging/PyCronVideoAlarm_Linux
+            staging/PyCronVideoAlarm_Windows.exe
+            staging/PyCronVideoAlarm_MultiPlatform_Portable.zip
+          body: |
+            Automated Multi-Platform Release
+            
+            **Release Date:** ${{ steps.release_info.outputs.date_display }}
+            **Commit Hash:** ${{ steps.release_info.outputs.short_sha }}
+            
+            Included Files:
+            - **PyCronVideoAlarm_Linux**: Linux standalone binary
+            - **PyCronVideoAlarm_Windows.exe**: Windows standalone executable
+            - **PyCronVideoAlarm_MultiPlatform_Portable.zip**: All-in-one pack with shared media directories. (download this if this is your first time using the app)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
