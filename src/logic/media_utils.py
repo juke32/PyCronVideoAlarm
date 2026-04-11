@@ -174,9 +174,12 @@ def play_video_vlc(file_path, config=None):
             
         # Audio gain
         if gain is not None and gain != 0:
-            # simple linear volume adjustment roughly for VLC
-            cmd.append(f"--mmdevice-volume={min(1.0, max(0.0, 1.0 + (float(gain) / 40.0)))}")
-
+            try:
+                # Convert dB gain to linear multiplier, VLC 256 is 100%
+                linear_gain = 10 ** (float(gain) / 20.0)
+                cmd.append(f"--volume={int(256 * linear_gain)}")
+            except Exception:
+                pass
         logging.info(f"Launching VLC: {cmd}")
         result = subprocess.run(cmd, capture_output=True, text=True, env=get_clean_env())
         

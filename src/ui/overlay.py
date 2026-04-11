@@ -14,9 +14,8 @@ class BlackBoxOverlay(tk.Toplevel):
         
         # Windows specific fix for fullscreen coverage
         if hasattr(sys, 'platform') and sys.platform == 'win32':
-             self.state('zoomed')
-             self.geometry(f"{self.winfo_screenwidth()}x{self.winfo_screenheight()}+0+0")
              self.overrideredirect(True)
+             self.geometry(f"{self.winfo_screenwidth()}x{self.winfo_screenheight()}+0+0")
         
         # Opacity handling (Windows/Linux support varies)
         try:
@@ -57,7 +56,6 @@ class BlackBoxOverlay(tk.Toplevel):
             
             # Windows specific re-application
             if hasattr(sys, 'platform') and sys.platform == 'win32':
-                 self.state('zoomed')
                  self.overrideredirect(True)
                  
         except Exception as e:
