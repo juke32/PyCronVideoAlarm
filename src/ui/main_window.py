@@ -1289,7 +1289,7 @@ Quickstart Guide
         fixes_frame.pack(fill=tk.X, pady=10)
         
         common_text = """
-• Video won't play? Ensure mpv is installed and working: run 'mpv --version' in a terminal.
+• Video won't play? Ensure mpv (Linux) or VLC (Windows) is installed and working.
 • No alarms firing? Check the 'Next Alarm' text on the ALARMS tab. If it says 'None', try re-setting the alarm.
 • Linux - Cron issues? Ensure crontab access by running 'crontab -l' in a terminal.
   - 'no crontab for user' = you have access (no entries yet).

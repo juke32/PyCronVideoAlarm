@@ -1,16 +1,14 @@
 # LINUX:
-Change Brightness when user is added tothe video group
-
+Change Brightness when user is added tothe video group more indebth research and testing on other systems
+opening url broke in linux
+The test individual actions doesn't behave the same as when played from cron, the url on linux trying to open chrome works only in the sequence editor
 
 # Windows:
-make sure it uses vlc and doesn't check or mention mpv
-Look at how to use an installer to make it easy
-
-
-
-# MacOS:
-Try to get a first version into a .app
-look at MPV?
+Audio shows VLC screen
+one time alarm doesn't delete after run
+videos show under application
+next run text is hidden on short displays
+Whole scaling is wack and not relative, but that can be fixed later
 
 
 
