@@ -301,6 +301,12 @@ class ActionCard(ttk.Frame):
         except Exception:
             return None
 
+    def _drag_siblings(self):
+        """All draggable cards in our list, ordered by on-screen position."""
+        cards = [w for w in self.master.winfo_children() if isinstance(w, ActionCard)]
+        cards.sort(key=lambda w: w.winfo_rooty())
+        return cards
+
     def _start_drag(self, event):
         """Begin a drag operation. Motion is captured on the toplevel so the drag
         stays smooth even when the pointer crosses over neighbouring cards."""
@@ -309,13 +315,13 @@ class ActionCard(ttk.Frame):
 
         self._drag_active = True
         self._drag_start_index = self.index
-        self._drag_last_pos = None          # target slot the indicator currently shows
-        self._drag_pointer_y = None
+        self._drag_start_slot = self.index
+        self._drag_slot = self.index
+        self._drag_pointer_y = event.y_root
         self._drag_autoscroll_job = None
 
-        # Highlight the card being dragged (elevated look). We deliberately do NOT
-        # repack it during the drag — the real reorder happens once on release,
-        # which is what keeps the motion fluid.
+        # Highlight the card being dragged so it is unmistakable among similar
+        # looking siblings while the pointer moves it.
         self.configure(style='DragCard.TFrame')
         self.header_frame.configure(style='DragCard.TFrame')
         try:
@@ -328,50 +334,15 @@ class ActionCard(ttk.Frame):
         toplevel.bind('<B1-Motion>', self._drag_motion)
         toplevel.bind('<ButtonRelease-1>', self._end_drag)
 
-    def _drag_insertion_y(self, cards, pos):
-        """Canvas-Y where the insertion indicator should sit for slot ``pos``
-        (the gap the dragged card would land in)."""
-        if pos >= len(cards):
-            last = cards[-1]
-            return last.winfo_y() + last.winfo_height()
-        return cards[pos].winfo_y()
-
-    def _draw_drag_indicator(self, event):
-        """Draw (and move) the insertion line showing exactly where the dragged
-        card will land. Only redraws when the target slot changes so ordinary
-        motion stays cheap and fluid; the card itself does not move."""
-        cards = [w for w in self.master.winfo_children() if isinstance(w, ActionCard)]
-        cards.sort(key=lambda w: w.winfo_rooty())
-        pos = 0
-        for c in cards:
-            if c is self:
-                continue
-            cy = c.winfo_rooty() + c.winfo_height() // 2
-            if (self._drag_pointer_y or 0) > cy:
-                pos += 1
-        if pos == self._drag_last_pos:
-            return
-        self._drag_last_pos = pos
-
-        canvas = self._drag_canvas()
-        if canvas is None:
-            return
-        canvas.delete('_drag_ind')
-        target = self._drag_insertion_y(cards, pos)
-        w = canvas.winfo_width()
-        if w > 1:
-            canvas.create_line(0, target, w, target, fill=COLORS['primary'],
-                               width=4, tags='_drag_ind')
-        canvas.update_idletasks()
-
     def _drag_motion(self, event):
-        """Smooth drag: show a live insertion indicator where the card will land,
-        auto-scrolling ONLY while the pointer is pressed against the canvas edge
-        (the list otherwise stays put)."""
+        """Smooth drag: the card physically follows the pointer. The list is only
+        repacked when the drop slot actually changes (so ordinary motion stays
+        cheap), and it auto-scrolls ONLY while the pointer is pressed against the
+        top/bottom edge band — the list otherwise stays put."""
         if not self._drag_active:
             return
         self._drag_pointer_y = event.y_root
-        self._draw_drag_indicator(event)
+        self._move_to_pointer_slot()
 
         canvas = self._drag_canvas()
         if canvas is None:
@@ -382,16 +353,52 @@ class ActionCard(ttk.Frame):
             edge = 40
             if event.y_root < top + edge:
                 depth = (top + edge - event.y_root) / float(edge)
-                self._set_autoscroll(canvas, -1, depth)
+                self._start_autoscroll(canvas, -1, depth)
             elif event.y_root > top + height - edge:
                 depth = (event.y_root - (top + height - edge)) / float(edge)
-                self._set_autoscroll(canvas, 1, depth)
+                self._start_autoscroll(canvas, 1, depth)
             else:
                 self._stop_autoscroll()
         except Exception:
             pass
 
-    def _set_autoscroll(self, canvas, direction, depth):
+    def _slot_from_pointer(self):
+        """Target slot (gap between other cards) the card would land in right
+        now, based on the last known pointer root-Y. Other cards' slots are the
+        gaps; the dragged card itself is skipped."""
+        pos = 0
+        for c in self._drag_siblings():
+            if c is self:
+                continue
+            cy = c.winfo_rooty() + c.winfo_height() // 2
+            if self._drag_pointer_y > cy:
+                pos += 1
+        return pos
+
+    def _move_to_pointer_slot(self):
+        """Repack the dragged card so it visually tracks the pointer. Only does
+        real layout work when the target slot changes (the cheap path)."""
+        cards = self._drag_siblings()
+        pos = self._drag_slot_from_pointer(cards)
+        if pos == self._drag_slot:
+            return
+        self._drag_slot = pos
+        self._repack_at_slot(cards, pos)
+
+    def _repack_at_slot(self, cards, pos):
+        parent = self.master
+        others = [c for c in cards if c is not self]
+        if pos >= len(others):
+            # Move to the end (below every sibling)
+            self.pack(fill=tk.X, pady=1)
+        else:
+            self.pack(fill=tk.X, pady=1, before=others[pos])
+        try:
+            parent.update_idletasks()
+        except Exception:
+            pass
+
+    def _start_autoscroll(self, canvas, direction, depth):
         """Smooth auto-scroll loop while the pointer hovers in the edge band.
         Velocity grows with pointer depth; the loop self-cancels once the pointer
         leaves the band or the drag ends."""
@@ -415,7 +422,10 @@ class ActionCard(ttk.Frame):
                     return
                 speed = max(1, int(depth * 6))
                 canvas.yview_scroll(direction * speed, "units")
-                self._draw_drag_indicator(None)
+                # The list moved under the pointer — re-slot so the dragged card
+                # keeps following even while the band auto-scrolls.
+                cards = self._drag_siblings()
+                self._repack_at_slot(cards, self._drag_slot_from_pointer(cards))
             except Exception:
                 self._drag_autoscroll_job = None
                 return
@@ -433,7 +443,8 @@ class ActionCard(ttk.Frame):
             self._drag_autoscroll_job = None
 
     def _end_drag(self, event):
-        """End drag: remove the indicator, then commit the reorder if it changed."""
+        """End drag: restore the card's look, then commit the reorder if it
+        changed. A click without real movement toggles the editor instead."""
         toplevel = self.winfo_toplevel()
         toplevel.unbind('<B1-Motion>')
         toplevel.unbind('<ButtonRelease-1>')
@@ -442,14 +453,6 @@ class ActionCard(ttk.Frame):
         if not self._drag_active:
             return
         self._drag_active = False
-
-        # Remove the insertion indicator
-        canvas = self._drag_canvas()
-        if canvas is not None:
-            try:
-                canvas.delete('_drag_ind')
-            except Exception:
-                pass
 
         # Restore the card's normal colors
         self.configure(style=self.card_style)
@@ -462,18 +465,18 @@ class ActionCard(ttk.Frame):
             pass
 
         start = self._drag_start_index
-        target = self._drag_last_pos
+        target = self._drag_slot
         self._drag_start_index = None
-        self._drag_last_pos = None
+        self._drag_slot = None
+        self._drag_pointer_y = None
 
-        # No real motion (a click, or a drag with no slot change) toggles the editor
-        if target is None or target == start:
+        # A click without real movement toggles the editor
+        if target == start:
             self.toggle_expand()
             return
 
-        if target != start and 'move_to' in self.callbacks:
+        if target is not None and target != start and 'move_to' in self.callbacks:
             self.callbacks['move_to'](start, target)
-
 
     # --- Context Menu ---
     def show_context_menu(self, event):
