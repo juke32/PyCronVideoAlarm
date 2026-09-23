@@ -379,7 +379,7 @@ class ActionCard(ttk.Frame):
         """Repack the dragged card so it visually tracks the pointer. Only does
         real layout work when the target slot changes (the cheap path)."""
         cards = self._drag_siblings()
-        pos = self._drag_slot_from_pointer(cards)
+        pos = self._slot_from_pointer(cards)
         if pos == self._drag_slot:
             return
         self._drag_slot = pos
@@ -425,7 +425,7 @@ class ActionCard(ttk.Frame):
                 # The list moved under the pointer — re-slot so the dragged card
                 # keeps following even while the band auto-scrolls.
                 cards = self._drag_siblings()
-                self._repack_at_slot(cards, self._drag_slot_from_pointer(cards))
+                self._repack_at_slot(cards, self._slot_from_pointer(cards))
             except Exception:
                 self._drag_autoscroll_job = None
                 return
