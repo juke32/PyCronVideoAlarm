@@ -213,7 +213,7 @@ class ActionCard(ttk.Frame):
 
         ttk.Button(controls, text="▶", width=4, style='Icon.TButton',
                    command=lambda: callbacks['play'](self.index)).pack(side=tk.LEFT, padx=1)
-        self.expand_btn = ttk.Button(controls, text="✎", width=2, style='Icon.TButton',
+        self.expand_btn = ttk.Button(controls, text="✎", width=5, style='Icon.TButton',
                                      command=self.toggle_expand)
         self.expand_btn.pack(side=tk.LEFT, padx=1)
         ttk.Button(controls, text="🗑", width=4, style='Icon.TButton',
