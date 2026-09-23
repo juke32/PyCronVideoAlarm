@@ -211,12 +211,12 @@ class ActionCard(ttk.Frame):
         controls = ttk.Frame(self.header_frame, style=card_style)
         controls.pack(side=tk.RIGHT)
 
-        ttk.Button(controls, text="▶", width=2, style='Icon.TButton',
+        ttk.Button(controls, text="▶", width=4, style='Icon.TButton',
                    command=lambda: callbacks['play'](self.index)).pack(side=tk.LEFT, padx=1)
         self.expand_btn = ttk.Button(controls, text="✎", width=2, style='Icon.TButton',
                                      command=self.toggle_expand)
         self.expand_btn.pack(side=tk.LEFT, padx=1)
-        ttk.Button(controls, text="🗑", width=2, style='Icon.TButton',
+        ttk.Button(controls, text="🗑", width=4, style='Icon.TButton',
                    command=lambda: callbacks['remove'](self.index)).pack(side=tk.LEFT, padx=1)
 
         # --- Right-click context menu on the whole header ---
@@ -260,11 +260,11 @@ class ActionCard(ttk.Frame):
     def toggle_expand(self):
         if self.is_expanded:
             self.body_frame.pack_forget()
-            self.expand_btn.config(text="Edit")
+            self.expand_btn.config(text="Edit", width=5)
         else:
             self._create_body() # Ensure body is created
             self.body_frame.pack(fill=tk.X, padx=5, pady=0)
-            self.expand_btn.config(text="Close")
+            self.expand_btn.config(text="Close", width=5)
         self.is_expanded = not self.is_expanded
 
     def _adjust_height(self, event=None):
