@@ -8,7 +8,7 @@ on:
 
 jobs:
   check-trigger:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       should_build: ${{ steps.check.outputs.should_build }}
       is_release: ${{ steps.check.outputs.is_release }}
@@ -39,14 +39,14 @@ jobs:
           fi
 
   build-linux:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: check-trigger
     if: needs.check-trigger.outputs.should_build == 'true'
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v5
 
     - name: Set up Python 3.11
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v6
       with:
         python-version: "3.11"
 
@@ -90,7 +90,7 @@ jobs:
           src/main.py
 
     - name: Upload Artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: PyCronVideoAlarm_Linux
         path: dist/PyCronVideoAlarm_Linux
@@ -100,10 +100,10 @@ jobs:
     needs: check-trigger
     if: needs.check-trigger.outputs.should_build == 'true'
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v5
 
     - name: Set up Python 3.11
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v6
       with:
         python-version: "3.11"
 
@@ -142,23 +142,23 @@ jobs:
           src/main.py
 
     - name: Upload Artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: PyCronVideoAlarm_Windows
         path: dist/PyCronVideoAlarm_Windows.exe
 
   create-release:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [check-trigger, build-linux, build-windows]
     if: needs.check-trigger.outputs.is_release == 'true'
     permissions:
       contents: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           path: release_artifacts
 
@@ -227,7 +227,7 @@ jobs:
           echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.release_info.outputs.tag }}
           name: ${{ steps.release_info.outputs.title }}
