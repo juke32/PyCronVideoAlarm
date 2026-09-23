@@ -121,6 +121,29 @@ class VideoAlarmMainWindow(tk.Tk):
         if not check_media_player_installed():
             self.after(1000, self.show_missing_player_error)
 
+        # Live rescaling: re-detect SCALE from the app-window size (not the screen)
+        # and re-apply theme + re-render whenever the window is resized.
+        from .theme import bind_rescale
+        bind_rescale(self, self._apply_live_rescale, debounce_ms=160)
+
+    def _apply_live_rescale(self):
+        """Re-apply theme, fonts and re-render cards after the window was resized."""
+        try:
+            from .theme import apply_theme, sf
+            apply_theme(self, self.current_theme)
+            # Re-render the action list so cards pick up the new scaled fonts.
+            self.render_action_list()
+            # Rescale the big time-entry digits.
+            big = sf(('Arial', 48))
+            for w in (self.ampm_hour, self.ampm_minute,
+                      self.military_hour, self.military_minute):
+                try:
+                    w.configure(font=big)
+                except Exception:
+                    pass
+        except Exception as e:
+            logging.error(f"Live rescale failed: {e}")
+
     def show_missing_player_error(self):
         import platform
         import shutil

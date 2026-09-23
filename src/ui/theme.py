@@ -126,7 +126,14 @@ _FONTS_BASE = {
     "mono": ("Consolas", 10)
 }
 FONTS = dict(_FONTS_BASE)
+FONTS_BASE = _FONTS_BASE
 SCALE = 1.0
+# Widgets created with explicit (non-style) scaled fonts that must be refreshed
+# when the responsive scale changes (e.g. after a window resize).
+_SCALED_FONT_REFS = []      # list of (widget, base_font_tuple)
+_LAST_THEME = None
+_RESIZE_CALLBACK = None
+_RESIZE_JOB = None
 
 def _apply_scale_override():
     """Read an optional fixed ui_scale from settings.json."""
@@ -143,16 +150,21 @@ def _apply_scale_override():
     return False
 
 def _detect_scale(root):
-    """Compute a display-relative scale (auto) unless an override is set."""
+    """Compute a window-relative scale (auto, live-updated on window resize) unless
+    an override is set in settings.json ("ui": {"ui_scale": 1.2})."""
     global SCALE
     if _apply_scale_override():
         return
     try:
-        sw = root.winfo_screenwidth()
-        sh = root.winfo_screenheight()
-        if sw and sh:
-            # Reference is a 1280x720 desktop. Clamp to keep things usable.
-            SCALE = max(0.85, min(1.5, min(sw / 1280.0, sh / 720.0)))
+        # Prefer the actual app-window size: the UI should rescale when the user
+        # resizes the window, not just when the app starts. Reference is 1280x720.
+        w = root.winfo_width() if root is not None else 0
+        h = root.winfo_height() if root is not None else 0
+        if w < 80 or h < 60:
+            w = root.winfo_screenwidth() if root is not None else 0
+            h = root.winfo_screenheight() if root is not None else 0
+        if w and h:
+            SCALE = max(0.85, min(1.5, min(w / 1280.0, h / 720.0)))
         else:
             SCALE = 1.0
     except Exception:
@@ -166,6 +178,38 @@ def sf(font):
     """Scaled font tuple (family, size, *modifiers)."""
     family, size = font[0], font[1]
     return tuple([family, max(6, int(round(size * SCALE)))] + list(font[2:]))
+
+def recompute_scale(root):
+    """Re-detect SCALE from the current window size.
+
+    Returns True if SCALE actually changed (so callers can re-apply the theme
+    and re-render anything that captured concrete (already scaled) fonts).
+    """
+    global SCALE
+    old = SCALE
+    _detect_scale(root)
+    return abs(SCALE - old) > 0.001
+
+def bind_rescale(root, on_change, debounce_ms=160):
+    """Call on_change() (debounced) whenever the app window is resized and the
+    computed scale actually changed. Callers should apply_theme() + re-render
+    widgets that hold concrete scaled fonts."""
+    job = {"id": None}
+    def _schedule(event):
+        if job["id"]:
+            try:
+                root.after_cancel(job["id"])
+            except Exception:
+                pass
+        job["id"] = root.after(debounce_ms, _do)
+    def _do():
+        try:
+            if recompute_scale(root):
+                on_change()
+        finally:
+            job["id"] = None
+    root.bind("<Configure>", _schedule, add="+")
+    return _do
 
 def find_font(key):
     """Return the current (already scaled) font for a FONTS key."""
