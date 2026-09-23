@@ -11,11 +11,11 @@ class ScrollableFrame(ttk.Frame):
     """
     def __init__(self, container, *args, **kwargs):
         super().__init__(container, *args, **kwargs)
-        
+
         # Canvas and Scrollbar
         self.canvas = tk.Canvas(self, bg=COLORS['bg_dark'], highlightthickness=0)
         self.scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
-        
+
         # The scrollable frame (content area)
         self.scrollable_frame = ttk.Frame(self.canvas)
         self.scrollable_frame.configure(style='TFrame')
@@ -27,7 +27,7 @@ class ScrollableFrame(ttk.Frame):
         )
 
         self.canvas_frame = self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
-        
+
         # Configure canvas resize
         self.canvas.bind('<Configure>', self._on_canvas_configure)
 
@@ -35,10 +35,32 @@ class ScrollableFrame(ttk.Frame):
 
         self.canvas.pack(side="left", fill="both", expand=True)
         self.scrollbar.pack(side="right", fill="y")
-        
+        self._scrollbar_visible = True
+
+        # Auto-hide the scrollbar when all content fits
+        self.scrollable_frame.bind("<Configure>", self._maybe_hide_scrollbar, add="+")
+
         # Bind enter/leave events to enable/disable scrolling
         self.canvas.bind('<Enter>', self._bound_to_mousewheel)
         self.canvas.bind('<Leave>', self._unbound_to_mousewheel)
+
+    def _maybe_hide_scrollbar(self, event=None):
+        """Hide the scrollbar when content fits, show it when it overflows."""
+        try:
+            if not self.canvas.winfo_exists() or not self.scrollbar.winfo_exists():
+                return
+            bbox = self.canvas.bbox("all")
+            if bbox is None:
+                return
+            need = bbox[3] > self.canvas.winfo_height() + 1
+            if need and not self._scrollbar_visible:
+                self.scrollbar.pack(side="right", fill="y")
+                self._scrollbar_visible = True
+            elif not need and self._scrollbar_visible:
+                self.scrollbar.pack_forget()
+                self._scrollbar_visible = False
+        except tk.TclError:
+            pass
 
     def _bound_to_mousewheel(self, event):
         self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
@@ -53,6 +75,7 @@ class ScrollableFrame(ttk.Frame):
     def _on_canvas_configure(self, event):
         """Fit the inner frame to the canvas width."""
         self.canvas.itemconfig(self.canvas_frame, width=event.width)
+        self._maybe_hide_scrollbar(event)
 
     def _on_mousewheel(self, event):
         """Cross-platform mousewheel scrolling (pixel-based)."""
@@ -64,10 +87,63 @@ class ScrollableFrame(ttk.Frame):
             elif event.num == 4 or event.delta == 120:
                 self.canvas.yview_scroll(-scroll_amount, "units")
 
+_TYPE_LABELS = {
+    "play_video": "Play Video",
+    "play_audio": "Play Audio",
+    "play_random_video": "Random Video",
+    "play_random_audio": "Random Audio",
+    "open_url": "Open URL",
+    "wait_action": "Wait",
+    "set_system_volume": "Set Volume",
+    "set_brightness": "Brightness",
+    "kill_black_screen": "Kill Black Screen",
+    "monitor_control": "Monitor",
+    "run_command": "Run Command",
+    "open_journal": "Journal",
+    "take_photo": "Photo",
+    "record_audio": "Record Audio",
+}
+
+def _humanize_type(action_type):
+    return _TYPE_LABELS.get(action_type, action_type.replace("_", " ").title())
+
+def _summarize(action_type, config):
+    """Build a short human-readable summary for a card header."""
+    action_type = action_type or ""
+    cfg = config or {}
+    if action_type in ("play_video", "play_audio", "play_random_video", "play_random_audio"):
+        target = cfg.get("file") or cfg.get("directory") or ""
+        parts = []
+        if target:
+            parts.append(target)
+        if cfg.get("system_volume") is not None:
+            parts.append(f"vol {cfg.get('system_volume')}%")
+        if cfg.get("from") not in (None, "", "00:00"):
+            parts.append(f"{cfg.get('from')}→{cfg.get('to', 'end')}")
+        if action_type in ("play_video", "play_random_video"):
+            parts.append("fullscreen" if cfg.get("fullscreen") else "window")
+        return "  ·  ".join(parts) if parts else (cfg.get("#comment") or "")
+    if action_type == "open_url":
+        browser = cfg.get("browser", "default")
+        url = cfg.get("url", "")
+        return f"{url}  ({browser})" if url else (cfg.get("#comment") or "")
+    if action_type == "wait_action":
+        return f"Wait {cfg.get('duration', 0)}s"
+    if action_type == "set_system_volume":
+        return f"Set volume to {cfg.get('volume', 50)}%"
+    if action_type == "set_brightness":
+        return f"Set brightness to {cfg.get('level', 100)}%"
+    if action_type == "monitor_control":
+        return f"Turn monitor {cfg.get('state', 'off')}"
+    if action_type == "record_audio":
+        return f"Record {cfg.get('duration', 10)}s of audio"
+    return cfg.get("#comment") or ""
+
 class ActionCard(ttk.Frame):
     """
     An accordion-style card representing a single action.
     Has a summary header and an expanding body for editing.
+    The header doubles as a smooth drag handle for reordering.
     """
     current_menu = None  # Track currently open menu
 
@@ -76,13 +152,13 @@ class ActionCard(ttk.Frame):
         callbacks: dict with keys 'update', 'remove', 'move_up', 'move_down', 'move_to'
         """
         super().__init__(parent, padding=2, relief='solid', borderwidth=0)
-        
+
         self.index = action_index
         self.action_data = action_data
         self.callbacks = callbacks
         self.is_expanded = False
         self.body_created = False
-        
+
         # Set background color based on action type
         action_type = action_data.get('type', '').lower()
         if 'audio' in action_type or 'sound' in action_type or 'play_audio' in action_type:
@@ -93,98 +169,92 @@ class ActionCard(ttk.Frame):
             card_style = 'WaitCard.TFrame'
         else:
             card_style = 'Card.TFrame'
-        
+
         self.configure(style=card_style)
         self.card_style = card_style
-        
+        label_style = card_style.replace('.TFrame', '.TLabel')
+
+        # Drag state (live, animated reordering)
+        self._drag_active = False
+        self._drag_start_index = None
+        self._drag_visual_pos = None
+
         # --- Header ---
         self.header_frame = ttk.Frame(self, style=card_style)
         self.header_frame.pack(fill=tk.X, padx=2, pady=2)
-        
-        # Drag and Drop Bindings (Handle Click via Release check)
-        # We'll use the header as the handle
-        self.header_frame.bind("<ButtonPress-1>", self._start_drag)
-        self.header_frame.bind("<B1-Motion>", self._drag_motion)
-        self.header_frame.bind("<ButtonRelease-1>", self._end_drag)
-        self.header_frame.bind("<Button-3>", self.show_context_menu) # Right-click context menu
+
+        # Drag handle (also make the whole header draggable)
+        self.drag_handle = ttk.Label(self.header_frame, text="≡", style=label_style,
+                                     font=("Segoe UI", 11, "bold"))
+        self.drag_handle.pack(side=tk.LEFT, padx=(2, 0))
+
+        # Index badge
+        self.index_lbl = ttk.Label(self.header_frame, text=f"{action_index + 1}", style=label_style,
+                                   width=2)
+        self.index_lbl.pack(side=tk.LEFT, padx=2)
 
         # Icon/Type
-        label_style = card_style.replace('.TFrame', '.TLabel')
-        
-        # --- Buttons (Left Aligned for left-to-right user mapping) ---
-        # Order: Play, Edit, Delete, Up, Down
-        
-        ttk.Button(self.header_frame, text="▶ Play", width=6, style='Icon.TButton',
-                 command=lambda: callbacks['play'](self.index)).pack(side=tk.LEFT, padx=2)
-                 
-        self.expand_btn = ttk.Button(self.header_frame, text="Edit", width=6, style='Icon.TButton',
-                                   command=self.toggle_expand)
-        self.expand_btn.pack(side=tk.LEFT, padx=2)
-        
-        ttk.Button(self.header_frame, text="X", width=2, style='Icon.TButton',
-                 command=lambda: callbacks['remove'](self.index)).pack(side=tk.LEFT, padx=2)
-
-        ttk.Button(self.header_frame, text="▲", width=2, style='Icon.TButton',
-                 command=lambda: callbacks['move_up'](self.index)).pack(side=tk.LEFT, padx=1)
-                 
-        ttk.Button(self.header_frame, text="▼", width=2, style='Icon.TButton',
-                 command=lambda: callbacks['move_down'](self.index)).pack(side=tk.LEFT, padx=1)
-
-        # --- Labels (Left Aligned - Fill remaining space) ---
-        # 1. Name/Type
-        type_lbl = ttk.Label(self.header_frame, text=action_data.get('type', 'Unknown'), 
-                           font=FONTS['h2'], style=label_style, width=15)
+        type_lbl = ttk.Label(self.header_frame, text=_humanize_type(action_type),
+                             font=("Segoe UI", 10, "bold"), style=label_style)
         type_lbl.pack(side=tk.LEFT, padx=5)
-        type_lbl.bind("<ButtonPress-1>", self._start_drag)
-        type_lbl.bind("<B1-Motion>", self._drag_motion)
-        type_lbl.bind("<ButtonRelease-1>", self._end_drag)
-        type_lbl.bind("<Button-3>", self.show_context_menu)
-        
-        # 2. Comment / Summary text
+
+        # Summary text
         config = action_data.get('config', {})
-        summary_text = config.get('#comment', str(config))
-        # Ensure label wraps and stretches across screen without getting cut off
-        summary_lbl = ttk.Label(self.header_frame, text=summary_text, style=label_style, wraplength=800)
+        summary_text = _summarize(action_type, config)
+        summary_lbl = ttk.Label(self.header_frame, text=summary_text, style=label_style)
         summary_lbl.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=10)
-        summary_lbl.bind("<ButtonPress-1>", self._start_drag)
-        summary_lbl.bind("<B1-Motion>", self._drag_motion)
-        summary_lbl.bind("<ButtonRelease-1>", self._end_drag)
-        summary_lbl.bind("<Button-3>", self.show_context_menu)
-        
+
+        # Keep references so the drag highlight can restyle them consistently
+        self._drag_styled_labels = (self.drag_handle, self.index_lbl, type_lbl, summary_lbl)
+
+        # Right-aligned controls
+        controls = ttk.Frame(self.header_frame, style=card_style)
+        controls.pack(side=tk.RIGHT)
+
+        ttk.Button(controls, text="▶", width=2, style='Icon.TButton',
+                   command=lambda: callbacks['play'](self.index)).pack(side=tk.LEFT, padx=1)
+        self.expand_btn = ttk.Button(controls, text="✎", width=2, style='Icon.TButton',
+                                     command=self.toggle_expand)
+        self.expand_btn.pack(side=tk.LEFT, padx=1)
+        ttk.Button(controls, text="🗑", width=2, style='Icon.TButton',
+                   command=lambda: callbacks['remove'](self.index)).pack(side=tk.LEFT, padx=1)
+
+        # --- Right-click context menu on the whole header ---
+        for w in (self.header_frame, self.drag_handle, self.index_lbl, type_lbl, summary_lbl):
+            w.bind("<ButtonPress-1>", self._start_drag)
+            w.bind("<Button-3>", self.show_context_menu)
+
         # --- Body (Hidden by default, lazy loaded) ---
         self.body_frame = ttk.Frame(self, style=card_style)
         # Content will be lazy-loaded in toggle_expand
 
-        # State for Drag
-        self._drag_data = {"x": 0, "y": 0, "start_index": None}
-
     def _create_body(self):
         """Lazy load the body content."""
         if self.body_created: return
-        
+
         config = self.action_data.get('config', {})
-        
+
         # We need a text editor for the JSON config
         import json
         json_str = json.dumps(config, indent=2)
         initial_lines = json_str.count('\n') + 1
         # Limit initial height (min 3, max 30)
         initial_height = max(3, min(30, initial_lines))
-        
+
         self.json_text = tk.Text(self.body_frame, height=initial_height, width=50, bg=COLORS['bg_light'], 
                                 fg=COLORS['text_main'], insertbackground=COLORS['text_main'], relief="flat")
         self.json_text.insert("1.0", json_str)
         self.json_text.pack(fill=tk.X, padx=10, pady=5)
-        
+
         # Auto-resize binding
         self.json_text.bind('<KeyRelease>', self._adjust_height)
-        
+
         # Save Button inside the card
         # On click, we parse the JSON and trigger the 'update' callback
         btn_row = ttk.Frame(self.body_frame, style='Card.TFrame')
         btn_row.pack(fill=tk.X, padx=10, pady=5)
         ttk.Button(btn_row, text="Apply Changes", command=self.save_changes).pack(side=tk.RIGHT)
-        
+
         self.body_created = True
 
     def toggle_expand(self):
@@ -223,72 +293,107 @@ class ActionCard(ttk.Frame):
         except json.JSONDecodeError as e:
             messagebox.showerror("Invalid JSON", f"Syntax Error: {e}")
 
-    # --- Drag and Drop Logic ---
+    # --- Smooth Drag and Drop ---
+    def _drag_canvas(self):
+        """The canvas that scrolls our card list (master of the scrollable frame)."""
+        try:
+            return self.master.master
+        except Exception:
+            return None
+
     def _start_drag(self, event):
-        """Begin drag operation."""
-        # prevent dragging if clicking a button
-        widget = event.widget
-        if isinstance(widget, ttk.Button): return
-
-        self._drag_data["x"] = event.x_root
-        self._drag_data["y"] = event.y_root
-        self._drag_data["start_index"] = self.index
-        # Visual feedback? Maybe change cursor or relief
-        self.configure(relief="raised", borderwidth=3)
-        self.lift()
-
-    def _drag_motion(self, event):
-        """Handle dragging."""
-        pass
-
-    def _end_drag(self, event):
-        """End drag and calculate drop position."""
-        self.configure(relief='solid', borderwidth=0)
-        
-        if self._drag_data["start_index"] is None: return
-        
-        # Check if it was just a click (small movement)
-        dx = abs(event.x_root - self._drag_data["x"])
-        dy = abs(event.y_root - self._drag_data["y"])
-        
-        if dx < 5 and dy < 5:
-            self.toggle_expand()
-            self._drag_data["start_index"] = None
+        """Begin a drag operation. Motion is captured on the toplevel so the drag
+        stays smooth even when the pointer crosses over neighbouring cards."""
+        if isinstance(event.widget, (ttk.Button, tk.Button)):
             return
 
-        # Calculate where we dropped
-        # y_root of release
-        y_root = event.y_root
-        
-        # Iterate over all siblings (ActionCards) in the parent
-        parent = self.master
-        target_index = -1
-        
-        # Find which card we are over
-        for child in parent.winfo_children():
-            if isinstance(child, ActionCard):
-                cx, cy = child.winfo_rootx(), child.winfo_rooty()
-                ch, cw = child.winfo_height(), child.winfo_width()
-                
-                if cy <= y_root <= cy + ch:
-                    target_index = child.index
-                    break
-        
-        # If we dropped below the last one
-        if target_index == -1:
-            # Check if we are below the last one
-            if parent.winfo_children():
-                last_child = parent.winfo_children()[-1]
-                if y_root > last_child.winfo_rooty() + last_child.winfo_height():
-                    target_index = len(parent.winfo_children()) - 1 # Move to end
-        
-        # Perform move if valid and different
-        if target_index != -1 and target_index != self.index:
-            # Call move_to
-             if 'move_to' in self.callbacks:
-                 self.callbacks['move_to'](self.index, target_index)
+        self._drag_active = True
+        self._drag_start_index = self.index
+        self._drag_visual_pos = self.index
+        # Highlight the card being dragged
+        self.configure(style='DragCard.TFrame')
+        self.header_frame.configure(style='DragCard.TFrame')
+        try:
+            for lbl in self._drag_styled_labels:
+                lbl.configure(style='DragCard.TLabel')
+        except AttributeError:
+            pass
 
-        self._drag_data["start_index"] = None
+        toplevel = self.winfo_toplevel()
+        toplevel.bind('<B1-Motion>', self._drag_motion)
+        toplevel.bind('<ButtonRelease-1>', self._end_drag)
+
+    def _drag_motion(self, event):
+        """Live reorder: repack the dragged card around its neighbours smoothly
+        and auto-scroll when the pointer reaches the top/bottom edge."""
+        if not self._drag_active:
+            return
+
+        parent = self.master
+        cards = [w for w in parent.winfo_children() if isinstance(w, ActionCard)]
+        cards.sort(key=lambda w: w.winfo_rooty())
+        others = [c for c in cards if c is not self]
+
+        # Curtain position: number of other cards above the pointer's midpoint
+        pos = 0
+        for c in others:
+            cy = c.winfo_rooty() + c.winfo_height() // 2
+            if event.y_root > cy:
+                pos += 1
+
+        if pos != self._drag_visual_pos:
+            self._drag_visual_pos = pos
+            if pos < len(others):
+                self.pack(fill=tk.X, pady=1, before=others[pos])
+            else:
+                self.pack(fill=tk.X, pady=1)  # move to the end
+            parent.update_idletasks()
+
+        # Auto-scroll near the canvas edges
+        canvas = self._drag_canvas()
+        if canvas is not None:
+            try:
+                top = canvas.winfo_rooty()
+                height = canvas.winfo_height()
+                if event.y_root < top + 48:
+                    canvas.yview_scroll(-2, "units")
+                elif event.y_root > top + height - 48:
+                    canvas.yview_scroll(2, "units")
+            except Exception:
+                pass
+
+    def _end_drag(self, event):
+        """End drag: restore highlight, then commit the reorder if it changed."""
+        toplevel = self.winfo_toplevel()
+        toplevel.unbind('<B1-Motion>')
+        toplevel.unbind('<ButtonRelease-1>')
+
+        if not self._drag_active:
+            return
+        self._drag_active = False
+
+        # Restore the card's normal colors
+        self.configure(style=self.card_style)
+        self.header_frame.configure(style=self.card_style)
+        try:
+            label_style = self.card_style.replace('.TFrame', '.TLabel')
+            for lbl in self._drag_styled_labels:
+                lbl.configure(style=label_style)
+        except AttributeError:
+            pass
+
+        start = self._drag_start_index
+        target = self._drag_visual_pos
+        self._drag_start_index = None
+        self._drag_visual_pos = None
+
+        # A click without real movement toggles the editor instead
+        if target == start:
+            self.toggle_expand()
+            return
+
+        if target is not None and target != start and 'move_to' in self.callbacks:
+            self.callbacks['move_to'](start, target)
 
     # --- Context Menu ---
     def show_context_menu(self, event):
@@ -298,7 +403,7 @@ class ActionCard(ttk.Frame):
             try:
                 ActionCard.current_menu.unpost()
             except: pass
-        
+
         # 2. Clear any existing global bindings to prevent ghost clicks
         try:
              self.winfo_toplevel().unbind_all("<Button-1>")
@@ -306,7 +411,7 @@ class ActionCard(ttk.Frame):
 
         menu = tk.Menu(self, tearoff=0)
         ActionCard.current_menu = menu
-        
+
         def close_menu(e=None):
             if e:
                 # Check if click is inside the menu
@@ -340,7 +445,7 @@ class ActionCard(ttk.Frame):
         menu.add_command(label="Play Sequence From Here", command=command_wrapper(lambda: self.callbacks.get('play_from', lambda i: None)(self.index)))
         menu.add_separator()
         menu.add_command(label="Delete Action", command=command_wrapper(lambda: self.callbacks['remove'](self.index)))
-        
+
         # Auto-hide after 16 seconds
         self.after(16000, close_menu)
 

@@ -114,16 +114,66 @@ THEMES = {
 # Current active colors
 COLORS = THEMES["Twilight"]
 
-FONTS = {
+# --- Responsive UI Scaling -------------------------------------------------
+# SCALE multiplies fonts, paddings and sizes so the UI renders proportionally
+# on small (768p) and large (4K) displays. It is detected from the screen at
+# startup and can be overridden in settings.json  ("ui": {"ui_scale": 1.2}).
+_FONTS_BASE = {
     "h1": ("Segoe UI", 16, "bold"),
     "h2": ("Segoe UI", 12, "bold"),
+    "h3": ("Segoe UI", 10, "bold"),
     "body": ("Segoe UI", 10),
     "mono": ("Consolas", 10)
 }
+FONTS = dict(_FONTS_BASE)
+SCALE = 1.0
+
+def _apply_scale_override():
+    """Read an optional fixed ui_scale from settings.json."""
+    global SCALE
+    try:
+        from core.config import get_config
+        cfg = get_config()
+        val = cfg.get("ui", "ui_scale")
+        if isinstance(val, (int, float)) and val > 0:
+            SCALE = float(val)
+            return True
+    except Exception:
+        pass
+    return False
+
+def _detect_scale(root):
+    """Compute a display-relative scale (auto) unless an override is set."""
+    global SCALE
+    if _apply_scale_override():
+        return
+    try:
+        sw = root.winfo_screenwidth()
+        sh = root.winfo_screenheight()
+        if sw and sh:
+            # Reference is a 1280x720 desktop. Clamp to keep things usable.
+            SCALE = max(0.85, min(1.5, min(sw / 1280.0, sh / 720.0)))
+        else:
+            SCALE = 1.0
+    except Exception:
+        SCALE = 1.0
+
+def sp(px):
+    """Scaled padding / pixel size."""
+    return max(1, int(round(px * SCALE)))
+
+def sf(font):
+    """Scaled font tuple (family, size, *modifiers)."""
+    family, size = font[0], font[1]
+    return tuple([family, max(6, int(round(size * SCALE)))] + list(font[2:]))
+
+def find_font(key):
+    """Return the current (already scaled) font for a FONTS key."""
+    return FONTS.get(key, FONTS['body'])
 
 def apply_theme(root, theme_name="Twilight"):
     """Apply the selected theme to the global ttk style."""
-    global COLORS
+    global COLORS, FONTS
     
     # Fallback if theme_name is invalid or None
     if theme_name not in THEMES:
@@ -131,6 +181,10 @@ def apply_theme(root, theme_name="Twilight"):
         theme_name = "Twilight"
         
     COLORS = THEMES[theme_name]
+
+    # Compute responsive scale and update exposed fonts
+    _detect_scale(root)
+    FONTS = {k: sf(v) for k, v in _FONTS_BASE.items()}
         
     style = ttk.Style(root)
     style.theme_use('clam') 
@@ -142,6 +196,12 @@ def apply_theme(root, theme_name="Twilight"):
     style.configure('AudioCard.TFrame', background=COLORS.get('accent_audio', COLORS['bg_card']), relief="flat")
     style.configure('VideoCard.TFrame', background=COLORS.get('accent_video', COLORS['bg_card']), relief="flat")
     style.configure('WaitCard.TFrame', background=COLORS.get('accent_wait', COLORS['bg_card']), relief="flat")
+    # Active-drag card gets a distinctive raised border for live feedback
+    style.configure('DragCard.TFrame', background=COLORS['primary'], relief="raised", borderwidth=sp(2))
+    style.configure('DragCard.TLabel', background=COLORS['primary'], foreground=COLORS['text_main'])
+    style.configure('AudioDragCard.TFrame', background=COLORS['primary'], relief="raised", borderwidth=sp(2))
+    style.configure('VideoDragCard.TFrame', background=COLORS['primary'], relief="raised", borderwidth=sp(2))
+    style.configure('WaitDragCard.TFrame', background=COLORS['primary'], relief="raised", borderwidth=sp(2))
     
     # Labels
     style.configure('TLabel', background=COLORS['bg_dark'], foreground=COLORS['text_main'])
@@ -151,112 +211,139 @@ def apply_theme(root, theme_name="Twilight"):
     style.configure('WaitCard.TLabel', background=COLORS.get('accent_wait', COLORS['bg_card']), foreground=COLORS['text_main'])
     style.configure('Header.TLabel', font=FONTS['h1'], foreground=COLORS['primary'])
     style.configure('Subheader.TLabel', font=FONTS['h2'], foreground=COLORS['secondary'])
+    style.configure('Hint.TLabel', font=FONTS['body'], foreground=COLORS['text_dim'])
+    style.configure('Dim.TLabel', font=FONTS['h3'], foreground=COLORS['text_dim'])
+    style.configure('Accent.TLabel', font=FONTS['h2'], foreground=COLORS['secondary'])
     
     # Buttons
-    style.configure('TButton', 
-        background=COLORS['primary'], 
-        foreground=COLORS['bg_dark'], 
-        borderwidth=0, 
-        font=("Segoe UI", 10, "bold"),
-        padding=(10, 5)
+    style.configure('TButton',
+        background=COLORS['primary'],
+        foreground=COLORS['bg_dark'],
+        borderwidth=0,
+        font=FONTS['h3'],
+        padding=(sp(12), sp(6)),
+        relief="flat"
     )
-    style.map('TButton', 
-        background=[('active', COLORS['bg_light']), ('pressed', COLORS['primary_var'])],
-        foreground=[('active', COLORS['text_main'])]
+    style.map('TButton',
+        background=[('pressed', COLORS['primary_var']), ('active', COLORS['secondary'])],
+        foreground=[('pressed', COLORS['bg_dark']), ('active', COLORS['bg_dark'])],
+        relief=[('pressed', 'sunken')]
+    )
+
+    # Accent buttons for primary actions (Test / Set Alarm)
+    style.configure('Accent.TButton',
+        background=COLORS['secondary'], foreground=COLORS['bg_dark'],
+        font=FONTS['h2'], padding=(sp(16), sp(8)), borderwidth=0
+    )
+    style.map('Accent.TButton',
+        background=[('pressed', COLORS['primary_var']), ('active', COLORS['primary'])],
+        foreground=[('pressed', COLORS['bg_dark']), ('active', COLORS['bg_dark'])]
+    )
+    style.configure('Header.TButton',
+        background=COLORS['primary'], foreground=COLORS['bg_dark'],
+        font=FONTS['h2'], padding=(sp(14), sp(7)), borderwidth=0
+    )
+    style.map('Header.TButton',
+        background=[('pressed', COLORS['primary_var']), ('active', COLORS['secondary'])],
+        foreground=[('pressed', COLORS['bg_dark']), ('active', COLORS['bg_dark'])]
     )
     
     # Action/Icon Buttons (smaller, darker)
-    style.configure('Icon.TButton', 
-        background=COLORS['bg_light'], 
+    style.configure('Icon.TButton',
+        background=COLORS['bg_light'],
         foreground=COLORS['text_main'],
-        padding=(4, 2)
+        padding=(sp(4), sp(2)),
+        font=FONTS['body']
     )
     style.map('Icon.TButton', background=[('active', COLORS['border'])])
 
     # Inputs
-    style.configure('TEntry', 
-        fieldbackground=COLORS['bg_light'], 
-        foreground=COLORS['text_main'], 
+    style.configure('TEntry',
+        fieldbackground=COLORS['bg_light'],
+        foreground=COLORS['text_main'],
         insertcolor=COLORS['text_main'],
         borderwidth=1,
-        relief="flat"
+        relief="flat",
+        padding=(sp(4), sp(3))
     )
     
     # Notebook
     style.configure('TNotebook', background=COLORS['bg_dark'], borderwidth=0)
-    style.configure('TNotebook.Tab', 
-        background=COLORS['bg_card'], 
+    style.configure('TNotebook.Tab',
+        background=COLORS['bg_card'],
         foreground=COLORS['text_dim'],
-        padding=(15, 8), # Larger click area
+        padding=(sp(18), sp(9)),
         font=FONTS['h2']
     )
-    style.map('TNotebook.Tab', 
+    style.map('TNotebook.Tab',
         background=[('selected', COLORS['primary']), ('active', COLORS['bg_light'])],
         foreground=[('selected', COLORS['bg_dark']), ('active', COLORS['text_main'])]
     )
 
     # Treeview (Alarms List, File Lists)
-    style.configure('Treeview', 
-        background=COLORS['bg_light'], 
-        foreground=COLORS['text_main'], 
+    style.configure('Treeview',
+        background=COLORS['bg_light'],
+        foreground=COLORS['text_main'],
         fieldbackground=COLORS['bg_light'],
         borderwidth=0,
-        font=FONTS['body']
+        font=FONTS['body'],
+        rowheight=sp(30)
     )
-    style.map('Treeview', 
-        background=[('selected', COLORS['primary_var'])], 
+    style.map('Treeview',
+        background=[('selected', COLORS['primary_var'])],
         foreground=[('selected', COLORS['text_main'])]
     )
-    style.configure('Treeview.Heading', 
-        background=COLORS['bg_card'], 
-        foreground=COLORS['text_main'], 
-        font=("Segoe UI", 10, "bold"),
+    style.configure('Treeview.Heading',
+        background=COLORS['bg_card'],
+        foreground=COLORS['text_main'],
+        font=FONTS['h3'],
         relief="flat"
     )
     style.map('Treeview.Heading', background=[('active', COLORS['bg_light'])])
 
     # Combobox
-    style.configure('TCombobox', 
-        fieldbackground=COLORS['bg_light'], 
-        background=COLORS['bg_card'], 
+    style.configure('TCombobox',
+        fieldbackground=COLORS['bg_light'],
+        background=COLORS['bg_card'],
         foreground=COLORS['text_main'],
         arrowcolor=COLORS['text_main'],
-        borderwidth=1
+        borderwidth=1,
+        padding=(sp(4), sp(3))
     )
-    style.map('TCombobox', 
-        fieldbackground=[('readonly', COLORS['bg_light'])], 
-        selectbackground=[('readonly', COLORS['primary'])], 
+    style.map('TCombobox',
+        fieldbackground=[('readonly', COLORS['bg_light'])],
+        selectbackground=[('readonly', COLORS['primary'])],
         selectforeground=[('readonly', COLORS['bg_dark'])]
     )
 
     # Spinbox
-    style.configure('TSpinbox', 
-        fieldbackground=COLORS['bg_light'], 
-        background=COLORS['bg_card'], 
+    style.configure('TSpinbox',
+        fieldbackground=COLORS['bg_light'],
+        background=COLORS['bg_card'],
         foreground=COLORS['text_main'],
         arrowcolor=COLORS['text_main'],
         borderwidth=1
     )
-    style.map('TSpinbox', 
-        fieldbackground=[('readonly', COLORS['bg_light'])], 
-        selectbackground=[('focus', COLORS['primary'])], 
+    style.map('TSpinbox',
+        fieldbackground=[('readonly', COLORS['bg_light'])],
+        selectbackground=[('focus', COLORS['primary'])],
         selectforeground=[('focus', COLORS['bg_dark'])]
     )
 
     # Scrollbars (Darker, bigger)
-    style.configure("TScrollbar", 
-        background=COLORS['bg_card'], 
-        troughcolor=COLORS['bg_dark'], 
-        bordercolor=COLORS['bg_dark'], 
+    style.configure("TScrollbar",
+        background=COLORS['bg_card'],
+        troughcolor=COLORS['bg_dark'],
+        bordercolor=COLORS['bg_dark'],
         arrowcolor=COLORS['text_main'],
-        arrowsize=18
+        arrowsize=sp(18)
     )
-    style.configure("Vertical.TScrollbar", 
-        background=COLORS['bg_card'], 
-        troughcolor=COLORS['bg_dark'], 
-        bordercolor=COLORS['bg_dark'], 
+    style.configure("Vertical.TScrollbar",
+        background=COLORS['bg_card'],
+        troughcolor=COLORS['bg_dark'],
+        bordercolor=COLORS['bg_dark'],
         arrowcolor=COLORS['text_main'],
-        arrowsize=18
+        arrowsize=sp(18)
     )
     
     # Global Tkinter defaults

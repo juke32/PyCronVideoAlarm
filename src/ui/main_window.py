@@ -10,17 +10,15 @@ from datetime import datetime, timedelta
 
 # Internal Imports
 from core.factory import get_platform_managers
+from core.config import get_config
 from .overlay import OverlayController
-# Placeholder imports for logic we still need to port/connect
-# from logic.media import MediaQueue 
+from .theme import apply_theme, SCALE as UI_SCALE, sf, sp
 
 class VideoAlarmMainWindow(tk.Tk):
     def __init__(self):
         super().__init__()
         
         # Apply Modern Theme
-        from core.config import get_config
-        from .theme import apply_theme
         config = get_config()
         self.current_theme = config.get("ui", "theme") or "Twilight"
         self.style = apply_theme(self, self.current_theme)
@@ -42,7 +40,18 @@ class VideoAlarmMainWindow(tk.Tk):
         self.keep_awake_enabled = False
         
         self.title("PyCron Video Alarm")
-        self.geometry("920x800") # Slightly larger default PX size dimensions
+        # Responsive window: base size scales with the display, then we centre it
+        base_w = 980
+        base_h = 820
+        win_w = max(640, int(base_w * UI_SCALE))
+        win_h = max(520, int(base_h * UI_SCALE))
+        scr_w = self.winfo_screenwidth()
+        scr_h = self.winfo_screenheight()
+        if win_w > scr_w or win_h > scr_h:
+            win_w = min(win_w, scr_w - 40)
+            win_h = min(win_h, scr_h - 80)
+        self.geometry(f"{win_w}x{win_h}+{(scr_w - win_w) // 2}+{(scr_h - win_h) // 3}")
+        self.minsize(int(700 * UI_SCALE), int(540 * UI_SCALE))
         
         # Set window icon — works with .png, .ico, or both present
         # Supports both development (relative to source) and PyInstaller (sys._MEIPASS)
@@ -510,21 +519,21 @@ class VideoAlarmMainWindow(tk.Tk):
                     child.destroy()
 
             if new_format == "12h":
-                self.ampm_container.pack(side=tk.LEFT, padx=10)
+                self.ampm_container.pack(side=tk.LEFT, padx=sp(10))
             elif new_format == "24h":
-                self.mil_label.config(text="Hour:", font=('Arial', 12))
-                self.mil_container.pack(side=tk.LEFT, padx=10)
+                self.mil_label.config(text="Hour:", font=sf(('Arial', 12)))
+                self.mil_container.pack(side=tk.LEFT, padx=sp(10))
                 for widget in (self.military_hour, self.military_minute):
-                    widget.configure(font=('Arial', 48))
+                    widget.configure(font=sf(('Arial', 48)))
             else: # "Both"
-                self.ampm_container.pack(side=tk.LEFT, padx=10)
+                self.ampm_container.pack(side=tk.LEFT, padx=sp(10))
                 # Add separator label
-                sep = ttk.Label(self.time_input_container, text="=", font=('Arial', 48))
-                sep.pack(side=tk.LEFT, padx=10)
-                self.mil_label.config(text="", font=('Arial', 1)) # Hide label effectively
-                self.mil_container.pack(side=tk.LEFT, padx=10)
+                sep = ttk.Label(self.time_input_container, text="=", font=sf(('Arial', 48)))
+                sep.pack(side=tk.LEFT, padx=sp(10))
+                self.mil_label.config(text="", font=sf(('Arial', 1))) # Hide label effectively
+                self.mil_container.pack(side=tk.LEFT, padx=sp(10))
                 for widget in (self.military_hour, self.military_minute):
-                    widget.configure(font=('Arial', 48))
+                    widget.configure(font=sf(('Arial', 48)))
 
         messagebox.showinfo("Info", f"Time format changed to {new_format}. Some changes may require tab refresh.")
 
@@ -689,33 +698,39 @@ class VideoAlarmMainWindow(tk.Tk):
         btn_container = ttk.Frame(control_bar, style='Card.TFrame')
         btn_container.pack(side=tk.LEFT, padx=5)
         
-        ttk.Button(btn_container, text="▶ Test", width=8, command=self.test_sequence).pack(side=tk.LEFT, padx=2)
+        ttk.Button(btn_container, text="▶ Test", width=8, style='Accent.TButton', command=self.test_sequence).pack(side=tk.LEFT, padx=2)
         ttk.Separator(btn_container, orient='vertical').pack(side=tk.LEFT, fill='y', padx=8)
         ttk.Button(btn_container, text="New", width=6, command=self.new_sequence).pack(side=tk.LEFT, padx=2)
         ttk.Button(btn_container, text="Load", width=6, command=self.load_sequence).pack(side=tk.LEFT, padx=2)
         ttk.Button(btn_container, text="Save", width=6, command=self.save_sequence).pack(side=tk.LEFT, padx=2)
 
         # Right-aligned Name Input
-        self.sequence_name = ttk.Entry(control_bar, font=("Segoe UI", 12))
+        self.sequence_name = ttk.Entry(control_bar, font=sf(("Segoe UI", 12)))
         self.sequence_name.pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=10)
         ttk.Label(control_bar, text="Sequence Name:", style='Card.TLabel').pack(side=tk.RIGHT, padx=5)
 
         # Footer -> Moved to Top: Add New Action
         add_frame = ttk.Frame(self.main_frame, style='Card.TFrame', padding=10)
         add_frame.pack(fill=tk.X, padx=10, pady=(0, 10))
-        
+
         ttk.Label(add_frame, text="Add Action:", style='Card.TLabel').pack(side=tk.LEFT)
-        
-        self.action_type = ttk.Combobox(add_frame, state="readonly", width=20)
+
+        self.action_type = ttk.Combobox(add_frame, state="readonly", width=20, font=sf(("Segoe UI", 11)))
         try:
             from logic.actions import ACTION_TYPES
             self.action_type['values'] = ACTION_TYPES
             self.action_type.set(ACTION_TYPES[0] if ACTION_TYPES else "")
         except ImportError:
             self.action_type['values'] = ["play_video", "open_url"]
-            
+
         self.action_type.pack(side=tk.LEFT, padx=5)
-        ttk.Button(add_frame, text="+ Add to End", command=self.add_action).pack(side=tk.LEFT)
+        ttk.Button(add_frame, text="+ Add to End", style='Accent.TButton', command=self.add_action).pack(side=tk.LEFT, padx=5)
+
+        # Hint row with a quick usage guide
+        hint_frame = ttk.Frame(self.main_frame, style='Card.TFrame')
+        hint_frame.pack(fill=tk.X, padx=10, pady=(0, 2))
+        ttk.Label(hint_frame, text="Drag a card to reorder it · click a card to edit · right-click for more",
+                  style='Hint.TLabel').pack(side=tk.LEFT, padx=8)
 
         # Main Content Area (Split: List on Left/Center, "Add New" tools on bottom or side?)
         # User requested: "One screen where you can see actions... one open at a time"
@@ -747,7 +762,14 @@ class VideoAlarmMainWindow(tk.Tk):
         for widget in self.action_scroll.scrollable_frame.winfo_children():
             widget.destroy()
             
-        if not self.current_sequence:
+        if not self.current_sequence or not self.current_sequence.actions:
+            placeholder = ttk.Label(
+                self.action_scroll.scrollable_frame,
+                text="No actions yet.\nChoose an action below and press '+ Add to End' to get started.",
+                style='Dim.TLabel',
+                justify=tk.CENTER
+            )
+            placeholder.pack(fill=tk.X, padx=20, pady=40)
             canvas.pack(side="left", fill="both", expand=True)
             return
 
@@ -915,12 +937,12 @@ class VideoAlarmMainWindow(tk.Tk):
         time_frame = ttk.Frame(input_row)
         time_frame.pack(expand=True, fill=tk.NONE)
         
-        ttk.Label(time_frame, text="Alarm Time", font=("Segoe UI", 12, "bold")).pack(pady=(0, 2))
+        ttk.Label(time_frame, text="Alarm Time", font=sf(("Segoe UI", 12, "bold"))).pack(pady=(0, sp(2)))
         
         self.time_input_container = ttk.Frame(time_frame)
         self.time_input_container.pack()
         
-        big_font = ('Arial', 48)
+        big_font = sf(('Arial', 48))
         
         # 12-hour
         self.ampm_container = ttk.Frame(self.time_input_container)
@@ -947,7 +969,7 @@ class VideoAlarmMainWindow(tk.Tk):
         if format in ("24h", "Both"):
             self.mil_container.pack(side=tk.LEFT, padx=10)
         
-        self.mil_label = ttk.Label(self.mil_container, text="24-Hour:" if format in ("24h", "Both") else "", font=('Arial', 12) if format in ("24h", "Both") else None)
+        self.mil_label = ttk.Label(self.mil_container, text="24-Hour:" if format in ("24h", "Both") else "", font=sf(('Arial', 12)) if format in ("24h", "Both") else None)
         self.mil_label.pack(side=tk.LEFT)
         
         self.military_hour = ttk.Entry(self.mil_container, width=3, font=big_font)
@@ -960,10 +982,10 @@ class VideoAlarmMainWindow(tk.Tk):
         seq_frame = ttk.Frame(control_frame)
         seq_frame.grid(row=2, column=0, columnspan=4, padx=5, pady=(0, 5), sticky="ew")
         
-        ttk.Label(seq_frame, text="Sequence to Play:", font=("Segoe UI", 11, "bold")).pack(side=tk.LEFT, padx=(5, 10))
+        ttk.Label(seq_frame, text="Sequence to Play:", font=sf(("Segoe UI", 11, "bold"))).pack(side=tk.LEFT, padx=(5, 10))
         
         self.sequence_var = tk.StringVar()
-        self.sequence_combo = ttk.Combobox(seq_frame, textvariable=self.sequence_var, state="readonly", font=('Arial', 12))
+        self.sequence_combo = ttk.Combobox(seq_frame, textvariable=self.sequence_var, state="readonly", font=sf(('Arial', 12)))
         self.sequence_combo.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
         self.refresh_sequence_list()
         
@@ -981,7 +1003,7 @@ class VideoAlarmMainWindow(tk.Tk):
         
         # Configure style for larger checkboxes
         s = ttk.Style()
-        s.configure("Big.TCheckbutton", font=("Segoe UI", 11, "bold"))
+        s.configure("Big.TCheckbutton", font=sf(("Segoe UI", 11, "bold")))
         
         for i, day in enumerate(days_list):
             var = tk.BooleanVar(value=False)
@@ -1034,7 +1056,7 @@ class VideoAlarmMainWindow(tk.Tk):
         
         # Next Alarm Ticker (placed ABOVE the list so it never clips on short displays)
         self.next_alarm_var = tk.StringVar(value="Next Alarm: None")
-        ttk.Label(list_frame, textvariable=self.next_alarm_var, font=("Segoe UI", 10, "bold"), foreground="#007ACC").pack(anchor=tk.W, pady=(0, 5))
+        ttk.Label(list_frame, textvariable=self.next_alarm_var, style='Accent.TLabel').pack(anchor=tk.W, pady=(0, 5))
         
         self.alarm_list = ttk.Treeview(list_frame, columns=("time", "sequence", "days", "enabled"), show="headings")
         self.alarm_list.heading("time", text="Time")
