@@ -45,8 +45,33 @@ def ensure_time_format(time_value):
         return str(time_value)
 
 def play_audio_with_retry(file_path, duration=None, gain=0, system_volume=None, retries=3):
-    """Play audio file using prioritized media players (same as video)."""
-    return execute_media(file_path, config=duration if isinstance(duration, dict) else None)
+    """Play audio file using the platform player, retrying on failure.
+
+    Args:
+        file_path: Path to the audio file.
+        duration: Audio format start 'MM:SS' or seconds, or a dict config.
+        gain: Audio gain in dB.
+        system_volume: Optional system volume (0-100) to set before playing.
+        retries: Number of additional attempts after the first.
+    """
+    if isinstance(duration, dict):
+        config = duration
+    else:
+        config = {
+            "gain": gain,
+            "system_volume": system_volume,
+            "from": duration or "00:00",
+            "to": "00:00",
+        }
+
+    attempts = max(1, int(retries) + 1)
+    for attempt in range(attempts):
+        if execute_media(file_path, config):
+            return True
+        if attempt < attempts - 1:
+            logging.warning(f"Audio playback attempt {attempt + 1}/{attempts} failed. Retrying...")
+            time_module.sleep(1)
+    return False
 
 
 def get_player_priority(file_path):
@@ -54,6 +79,13 @@ def get_player_priority(file_path):
     if sys.platform == "win32":
         return ["vlc"]
     return ["mpv"]
+
+_AUDIO_EXTS = {".mp3", ".wav", ".ogg", ".flac", ".m4a", ".aac", ".opus", ".wma", ".mka"}
+
+def is_audio_file(file_path):
+    """Return True if the file extension indicates an audio-only file."""
+    _, ext = os.path.splitext(file_path)
+    return ext.lower() in _AUDIO_EXTS
 
 def execute_media(file_path, config=None):
     """
@@ -161,10 +193,24 @@ def play_video_vlc(file_path, config=None):
              except Exception as e:
                  logging.warning(f"Failed to set system volume: {e}")
 
+        # Default fullscreen only applies to video; audio must NEVER open a window
+        audio_only = is_audio_file(file_path)
+        if audio_only:
+            fullscreen = False
+
         cmd = [vlc_path, file_path, "--play-and-exit", "--no-video-title-show"]
         
-        if fullscreen:
-            cmd.append("--fullscreen")
+        if audio_only:
+            # Run audio with no interface and no video output (no VLC window)
+            cmd.append("--intf")
+            cmd.append("dummy")
+            cmd.append("--no-video")
+        else:
+            if fullscreen:
+                cmd.append("--fullscreen")
+            # Keep the video window on top so it never hides behind the app
+            if sys.platform == "win32":
+                cmd.append("--video-on-top")
             
         # Start/End time
         if start_time and float(start_time) > 0:
@@ -223,10 +269,15 @@ def play_video_mpv(file_path, config=None):
              except Exception as e:
                  logging.warning(f"Failed to set system volume: {e}")
 
+        # Audio files must not open a video window or go fullscreen
+        audio_only = is_audio_file(file_path)
+        if audio_only:
+            fullscreen = False
+
         cmd = [mpv_path, file_path]
         
         # Flags
-        if fullscreen:
+        if not audio_only and fullscreen:
             cmd.append("--fs")
             # Linux specific fixes for fullscreen rendering bugs (transparent/missing black borders)
             if sys.platform.startswith('linux'):
@@ -237,8 +288,11 @@ def play_video_mpv(file_path, config=None):
         
         # On Linux, combining --fs and --ontop causes many Window Managers to incorrectly
         # size the window or omit the black background. We only use ontop if not fullscreen or not Linux.
-        if not (sys.platform.startswith('linux') and fullscreen):
+        if not audio_only and not (sys.platform.startswith('linux') and fullscreen):
             cmd.append("--ontop") # Ensure video plays above everything
+        
+        if audio_only:
+            cmd.append("--no-video")
         
         # Start/End time
         if start_time and float(start_time) > 0:

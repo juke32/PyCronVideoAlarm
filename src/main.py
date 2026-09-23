@@ -88,25 +88,33 @@ def main():
         
         try:
             from logic.sequence import AlarmSequence
-            from logic.actions import execute_action
+            from logic.actions import execute_action, set_headless
+            set_headless(True)
             
             # Use AppData path for executing sequences instead of root project directory
             seq_dir = os.path.join(get_app_data_dir(), "sequences")
             
-            # Handle testing temporary sequences which are pushed to temp/
-            if args.execute_sequence.startswith("temp/") or args.execute_sequence.startswith("temp\\"):
-                seq_file = os.path.join(seq_dir, f"{args.execute_sequence}.json")
+            # Resolve the sequence file:
+            # 1. Absolute path passed directly (e.g. from the UI test button)
+            # 2. temp/ prefixed names -> sequences/temp/<name>.json
+            # 3. Plain name -> sequences/<name>.json (cron passed a bare sequence name)
+            if os.path.isabs(args.execute_sequence):
+                seq_file = args.execute_sequence
             else:
-                seq_file = os.path.join(seq_dir, f"{args.execute_sequence}.json")
+                is_temp = args.execute_sequence.startswith("temp/") or args.execute_sequence.startswith("temp\\")
+                if is_temp:
+                    name = args.execute_sequence.split("/", 1)[-1].rsplit("\\", 1)[-1]
+                    seq_dir = os.path.join(seq_dir, "temp")
+                else:
+                    name = args.execute_sequence
+                if not name.endswith(".json"):
+                    name = f"{name}.json"
+                seq_file = os.path.join(seq_dir, name)
             
             if not os.path.exists(seq_file):
-                # Fallback to absolute if the passed sequence is already an absolute path
-                if os.path.isabs(args.execute_sequence) and os.path.exists(args.execute_sequence):
-                    seq_file = args.execute_sequence
-                else:
-                    logging.error(f"Sequence file not found: {seq_file}")
-                    logging.error(f"  Available: {os.listdir(seq_dir) if os.path.exists(seq_dir) else 'dir not found'}")
-                    sys.exit(1)
+                logging.error(f"Sequence file not found: {seq_file}")
+                logging.error(f"  Available: {os.listdir(seq_dir) if os.path.exists(seq_dir) else 'dir not found'}")
+                sys.exit(1)
             
             sequence = AlarmSequence.load(seq_file)
             logging.info(f"Loaded sequence '{sequence.name}' with {len(sequence.actions)} actions")
@@ -187,12 +195,16 @@ def main():
                         except Exception as e:
                             logging.error(f"Failed to delete cron job: {e}")
                     else:
-                        # Windows: use scheduler wrapper
+                        # Windows: use scheduler wrapper. Use the ORIGINAL scheduled
+                        # time (not "now", which may be minutes later) plus the unique
+                        # job ID so the correct one-time task is deleted.
                         from logic.scheduler import AlarmScheduler
                         scheduler = AlarmScheduler()
-                        now = datetime.datetime.now()
-                        time_str = f"{now.hour}:{now.minute:02d}"
-                        scheduler.remove_alarm(args.execute_sequence, time_str)
+                        scheduled_time = args.scheduled_time
+                        if not scheduled_time:
+                            now = datetime.datetime.now()
+                            scheduled_time = f"{now.hour}:{now.minute:02d}"
+                        scheduler.remove_alarm(args.execute_sequence, scheduled_time, job_id=args.job_id)
                 except Exception as e:
                     logging.error(f"Error deleting alarm: {e}")
             

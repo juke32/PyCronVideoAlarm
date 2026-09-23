@@ -89,8 +89,16 @@ class LinuxScheduler:
             # We hardcode safe defaults here to ensure the alarm can launch visible windows.
             # This is a "Defense in Depth" strategy: main.py also has runtime checks, but setting it here is cleaner.
             uid = os.getuid()
-            # Injecting XDG_CURRENT_DESKTOP=KDE helps Qt apps (VLC) pick up the right theme/scaling immediately
-            env_prefix = f"DISPLAY=:0 XDG_RUNTIME_DIR=/run/user/{uid} XDG_CURRENT_DESKTOP=KDE "
+            # Inject environment variables to fix headless execution issues in Cron.
+            # Cron does not provide DISPLAY/XDG_RUNTIME_DIR by default, which causes
+            # GUI apps (mpv/VLC) to fail. Prefer values from the scheduling session
+            # and fall back to safe defaults.
+            display = os.environ.get("DISPLAY", ":0")
+            desktop = os.environ.get("XDG_CURRENT_DESKTOP", "")
+            env_prefix = f"DISPLAY={display} XDG_RUNTIME_DIR=/run/user/{uid}"
+            if desktop:
+                env_prefix += f" XDG_CURRENT_DESKTOP={desktop}"
+            env_prefix += " "
 
             if getattr(sys, 'frozen', False):
                 cmd = f'{env_prefix}"{sys.executable}" --execute-sequence "{sequence_name}"'
@@ -175,7 +183,7 @@ class LinuxScheduler:
         
         return alarms
 
-    def remove_alarm(self, sequence_name: str, time_str: str, days_str: str = "") -> (bool, str):
+    def remove_alarm(self, sequence_name: str, time_str: str, days_str: str = "", job_id: str = None) -> (bool, str):
         """Remove an alarm from crontab. Returns (success, message).
         
         Matches on time, sequence name, AND days to find the exact job.

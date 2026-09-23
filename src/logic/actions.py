@@ -5,9 +5,20 @@ import time
 import webbrowser
 import os
 import random
-import random
 import subprocess
-from logic.media_utils import execute_media, play_audio_with_retry, get_clean_env
+import shutil
+from logic.media_utils import execute_media, get_clean_env
+
+# When True, actions run headless (cron/task scheduler) and must not show dialogs.
+_HEADLESS = False
+
+def set_headless(value: bool = True) -> None:
+    """Mark whether actions are running outside the GUI (cron/task scheduler)."""
+    global _HEADLESS
+    _HEADLESS = bool(value)
+
+def _is_gui() -> bool:
+    return not _HEADLESS
 
 # List of supported action types
 ACTION_TYPES = [
@@ -110,6 +121,29 @@ def handle_play_audio(config):
         return execute_media(file_path, config)
     return False
 
+def _open_url_with_tool(url):
+    """Open a URL with a desktop tool (xdg-open on Linux) — reliable even in cron."""
+    if sys.platform.startswith("linux") and shutil.which("xdg-open"):
+        try:
+            subprocess.Popen(["xdg-open", url], env=get_clean_env())
+            return True
+        except Exception as e:
+            logging.warning(f"xdg-open failed for '{url}': {e}")
+    return False
+
+def open_url_reliably(url):
+    """Open a URL in the user's browser with cross-platform fallbacks.
+
+    webbrowser.open() can silently fail under cron/headless sessions on Linux;
+    xdg-open is used as a backup because it resolves the desktop default browser.
+    """
+    try:
+        if webbrowser.open(url):
+            return True
+    except Exception as e:
+        logging.warning(f"webbrowser.open failed for '{url}': {e}")
+    return _open_url_with_tool(url)
+
 def handle_open_url(config):
     """Handle open_url action with browser selection."""
     url = config.get("url")
@@ -119,9 +153,8 @@ def handle_open_url(config):
     
     try:
         if browser_name == "default":
-            webbrowser.open(url)
-            return True
-            
+            return open_url_reliably(url)
+        
         # Try to get specific browser
         # Handle chromium naming differences
         if browser_name == "chromium":
@@ -143,23 +176,20 @@ def handle_open_url(config):
              return True
         except webbrowser.Error:
              logging.warning(f"Browser '{browser_name}' not found, falling back to default.")
-             webbrowser.open(url)
-             return True
-             
+             return open_url_reliably(url)
+              
     except Exception as e:
         logging.error(f"Failed to open URL: {e}")
         return False
 
 def handle_wait_action(config):
     """Handle wait_action."""
-    duration = config.get("duration", 0)
     try:
-        time.sleep(float(duration))
-        return True
-    except ValueError:
-        return True
-    except ValueError:
-        return False
+        duration = max(0.0, float(config.get("duration", 0)))
+    except (ValueError, TypeError):
+        duration = 0.0
+    time.sleep(duration)
+    return True
 
 def get_current_system_volume():
     """Get the current system volume (0-100)."""
@@ -301,10 +331,11 @@ def handle_set_system_volume(config):
                  
          # If all failed
          logging.error("Windows Volume control failed (pycaw missing, nircmd missing)")
-         try:
-             from tkinter import messagebox
-             messagebox.showwarning("Action Failed", "Windows Volume Failed.\n\nOption 1: Install 'pycaw' (pip install pycaw comtypes)\nOption 2: Download 'nircmd.exe' and set path in settings.json")
-         except: pass
+         if _is_gui():
+             try:
+                 from tkinter import messagebox
+                 messagebox.showwarning("Action Failed", "Windows Volume Failed.\n\nOption 1: Install 'pycaw' (pip install pycaw comtypes)\nOption 2: Download 'nircmd.exe' and set path in settings.json")
+             except: pass
     return False
 
 def handle_set_brightness(config):
@@ -318,19 +349,21 @@ def handle_set_brightness(config):
             success = display_mgr.set_brightness(int(level))
             if not success:
                 logging.warning("display_mgr failed to set brightness")
-                try:
-                     from tkinter import messagebox
-                     messagebox.showwarning("Action Failed", "Failed to set brightness.\n\nEnsure 'brightnessctl' is installed or 'xrandr' is available.")
-                except: pass
+                if _is_gui():
+                    try:
+                         from tkinter import messagebox
+                         messagebox.showwarning("Action Failed", "Failed to set brightness.\n\nEnsure 'brightnessctl' is installed or 'xrandr' is available.")
+                    except: pass
             return success
         else:
             logging.warning("Display manager not available for this platform.")
     except Exception as e:
         logging.error(f"Brightness action failed: {e}")
-        try:
-             from tkinter import messagebox
-             messagebox.showerror("Action Error", f"Brightness Error: {e}")
-        except: pass
+        if _is_gui():
+            try:
+                 from tkinter import messagebox
+                 messagebox.showerror("Action Error", f"Brightness Error: {e}")
+            except: pass
     return False
 
 def handle_play_random_audio(config):
@@ -456,48 +489,65 @@ def handle_open_journal(config):
         return False
 
 def handle_take_photo(config):
-    """Handle take_photo action using OpenCV."""
+    """Handle take_photo action using OpenCV (with Linux fswebcam fallback)."""
     try:
-        import cv2
         camera_index = config.get("camera_index", 0)
         save_dir = config.get("directory", "captures")
         if not os.path.exists(save_dir): os.makedirs(save_dir)
         
-        cap = cv2.VideoCapture(camera_index)
-        if not cap.isOpened():
-            logging.error("Could not open camera")
-            return False
-            
-        ret, frame = cap.read()
-        cap.release()
+        from datetime import datetime
+        filename = datetime.now().strftime("IMG_%Y%m%d_%H%M%S.jpg")
+        filepath = os.path.join(save_dir, filename)
         
-        if ret:
-            from datetime import datetime
-            filename = datetime.now().strftime("IMG_%Y%m%d_%H%M%S.jpg")
-            filepath = os.path.join(save_dir, filename)
-            cv2.imwrite(filepath, frame)
-            logging.info(f"Photo taken: {filepath}")
-            return True
+        # Primary: OpenCV. Warm up a few frames first — the first grab from a
+        # webcam is often dark/blank while auto-exposure settles.
+        try:
+            import cv2
+            cap = cv2.VideoCapture(camera_index)
+            if cap.isOpened():
+                frame = None
+                for _ in range(5):
+                    ret, frame = cap.read()
+                    if not ret or frame is None:
+                        break
+                    time.sleep(0.03)
+                cap.release()
+                if frame is not None and cv2.imwrite(filepath, frame):
+                    logging.info(f"Photo taken (OpenCV): {filepath}")
+                    return True
+                logging.warning("OpenCV opened the camera but capture/imwrite failed")
+            else:
+                logging.warning("OpenCV could not open camera")
+        except ImportError:
+            logging.warning("OpenCV not installed (pip install opencv-python) — trying fallback")
+        except Exception as e:
+            logging.warning(f"OpenCV photo failed: {e}")
+        
+        # Linux fallback: fswebcam (lightweight, common on headless Pis)
+        if sys.platform.startswith("linux") and shutil.which("fswebcam"):
+            try:
+                result = subprocess.run(
+                    ["fswebcam", "-d", f"/dev/video{camera_index}", "--no-banner", filepath],
+                    capture_output=True, timeout=30, env=get_clean_env()
+                )
+                if os.path.exists(filepath):
+                    logging.info(f"Photo taken (fswebcam): {filepath}")
+                    return True
+                logging.error(f"fswebcam ran but produced no file (rc={result.returncode})")
+            except Exception as e:
+                logging.error(f"fswebcam failed: {e}")
         else:
-            logging.error("Failed to capture frame")
-            return False
-    except ImportError:
-        logging.error("OpenCV not installed (pip install opencv-python)")
+            logging.error("Take photo failed: no OpenCV and no fswebcam available.")
         return False
     except Exception as e:
         logging.error(f"Take photo failed: {e}")
         return False
 
 def handle_record_audio(config):
-    """Handle record_audio action using sounddevice."""
+    """Handle record_audio action using sounddevice (with Linux arecord fallback)."""
     try:
-        import sounddevice as sd
-        import numpy as np
-        from scipy.io.wavfile import write
-        
-        duration = config.get("duration", 10) # seconds
-        fs = 44100  # Sample rate
-        
+        duration = float(config.get("duration", 10))
+        if duration <= 0: duration = 10
         save_dir = config.get("directory", "captures")
         if not os.path.exists(save_dir): os.makedirs(save_dir)
         
@@ -505,16 +555,47 @@ def handle_record_audio(config):
         filename = datetime.now().strftime("REC_%Y%m%d_%H%M%S.wav")
         filepath = os.path.join(save_dir, filename)
         
-        logging.info(f"Recording audio for {duration} seconds...")
-        recording = sd.rec(int(duration * fs), samplerate=fs, channels=2)
-        sd.wait()  # Wait until recording is finished
-        write(filepath, fs, recording)  # Save as WAV file 
+        # Primary: sounddevice (+ numpy). scipy is optional — stdlib wave is a fallback.
+        try:
+            import sounddevice as sd
+            import numpy as np
+            fs = 44100
+            logging.info(f"Recording audio for {duration} seconds...")
+            recording = sd.rec(int(duration * fs), samplerate=fs, channels=2)
+            sd.wait()  # Wait until recording is finished
+            try:
+                from scipy.io.wavfile import write as wav_file_write
+                wav_file_write(filepath, fs, recording)
+            except ImportError:
+                import wave
+                pcm16 = (np.clip(recording, -1.0, 1.0) * 32767).astype(np.int16)
+                with wave.open(filepath, "wb") as w:
+                    w.setnchannels(2)
+                    w.setsampwidth(2)
+                    w.setframerate(fs)
+                    w.writeframes(pcm16.tobytes())
+            logging.info(f"Audio recorded: {filepath}")
+            return True
+        except ImportError:
+            logging.warning("sounddevice not installed — trying arecord fallback")
+        except Exception as e:
+            logging.warning(f"sounddevice recording failed: {e}")
         
-        logging.info(f"Audio recorded: {filepath}")
-        return True
-        
-    except ImportError:
-        logging.error("sounddevice/scipy not installed")
+        # Linux fallback: arecord (ALSA, typically preinstalled)
+        if sys.platform.startswith("linux") and shutil.which("arecord"):
+            try:
+                subprocess.run(
+                    ["arecord", "-q", "-f", "cd", "-t", "wav", "-d", str(int(duration)), filepath],
+                    timeout=duration + 20, env=get_clean_env()
+                )
+                if os.path.exists(filepath) and os.path.getsize(filepath) > 44:
+                    logging.info(f"Audio recorded (arecord): {filepath}")
+                    return True
+                logging.error("arecord ran but produced no/empty file")
+            except Exception as e:
+                logging.error(f"arecord failed: {e}")
+        else:
+            logging.error("Record audio failed: no sounddevice and no arecord available.")
         return False
     except Exception as e:
         logging.error(f"Record audio failed: {e}")

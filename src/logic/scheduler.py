@@ -35,10 +35,10 @@ class AlarmScheduler:
             return self.platform_scheduler.list_alarms()
         return []
 
-    def remove_alarm(self, sequence_name, time_str, days_str=""):
+    def remove_alarm(self, sequence_name, time_str, days_str="", job_id=None):
         """Remove an alarm. Returns (Success, Message)."""
         if self.platform_scheduler:
-            return self.platform_scheduler.remove_alarm(sequence_name, time_str, days_str=days_str)
+            return self.platform_scheduler.remove_alarm(sequence_name, time_str, days_str=days_str, job_id=job_id)
         return False, "No platform scheduler available"
 
     def get_debug_info(self):

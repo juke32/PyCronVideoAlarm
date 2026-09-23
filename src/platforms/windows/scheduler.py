@@ -2,6 +2,7 @@
 import sys
 import os
 import logging
+import uuid
 from typing import List, Dict, Any
 from datetime import datetime
 
@@ -122,19 +123,25 @@ class WindowsScheduler:
             actions = task_def.Actions
             action = actions.Create(0) # 0 = Execute
             
+            job_id = ""
+            if one_time:
+                job_id = uuid.uuid4().hex[:16]
+            
             if getattr(sys, 'frozen', False):
                 exe_path = sys.executable
                 action.Path = exe_path
                 args = f'--execute-sequence "{sequence_name}"'
-                if one_time: args += " --delete-after"
+                if one_time:
+                    args += f" --delete-after --job-id {job_id} --scheduled-time {time_str_meta}"
                 action.Arguments = args
                 action.WorkingDirectory = os.path.dirname(exe_path)
             else:
                 action.Path = sys.executable
                 base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-                script_path = os.path.join(base_dir, "main.py")
+                script_path = os.path.join(base_dir, "src", "main.py")
                 args = f'"{script_path}" --execute-sequence "{sequence_name}"'
-                if one_time: args += " --delete-after"
+                if one_time:
+                    args += f" --delete-after --job-id {job_id} --scheduled-time {time_str_meta}"
                 action.Arguments = args
                 action.WorkingDirectory = base_dir
             
@@ -221,18 +228,20 @@ class WindowsScheduler:
                 logging.error(f"Failed to list alarms from {folder}: {e}")
         return alarms
 
-    def remove_alarm(self, sequence_name, time_str, days_str="") -> (bool, str):
+    def remove_alarm(self, sequence_name, time_str, days_str="", job_id=None) -> (bool, str):
         """Remove alarm from Folder OR Root. Returns (Success, Message)."""
         if not self.root_folder: return False, "Scheduler not initialized"
         
         try:
-            target_hh, target_mm = map(int, time_str.split(':'))
+            target_hh = target_mm = None
+            if time_str and ':' in time_str:
+                target_hh, target_mm = map(int, time_str.split(':'))
             
             folders_to_check = []
             if self.task_folder: folders_to_check.append(self.task_folder)
             folders_to_check.append(self.root_folder)
             
-            logging.info(f"Removing alarm {sequence_name} at {time_str}...")
+            logging.info(f"Removing alarm {sequence_name} (job_id={job_id}) at {time_str}...")
             
             for folder in folders_to_check:
                 is_root = (folder == self.root_folder)
@@ -247,18 +256,32 @@ class WindowsScheduler:
                                 if t.Definition.RegistrationInfo.Author != "PyCronVideoAlarm": continue
                             except: continue
 
-                        # A. METADATA MATCH
+                        # A. JOB ID MATCH (best for one-time alarms)
+                        if job_id:
+                            try:
+                                target = f"--job-id {job_id}"
+                                for a in range(1, t.Definition.Actions.Count + 1):
+                                    act = t.Definition.Actions.Item(a)
+                                    if target in (act.Arguments or ""):
+                                        folder.DeleteTask(t.Name, 0)
+                                        msg = f"Deleted {t.Name} (Job ID Match)"
+                                        logging.info(msg)
+                                        return True, msg
+                            except Exception:
+                                pass
+
+                        # B. METADATA MATCH
                         try:
                             desc = t.Definition.RegistrationInfo.Description
-                            if desc and desc.startswith(f"PyCron|{sequence_name}|{time_str}"):
+                            if target_hh is not None and desc and desc.startswith(f"PyCron|{sequence_name}|{time_str}"):
                                  folder.DeleteTask(t.Name, 0)
                                  msg = f"Deleted {t.Name} (Metadata Match)"
                                  logging.info(msg)
                                  return True, msg
                         except: pass
                         
-                        # B. FILENAME MATCH
-                        if '_' in t.Name:
+                        # C. FILENAME MATCH
+                        if '_' in t.Name and target_hh is not None:
                             try:
                                 parts = t.Name.rsplit('_', 2)
                                 if len(parts) == 3:

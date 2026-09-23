@@ -426,8 +426,8 @@ class VideoAlarmMainWindow(tk.Tk):
 
     def open_kofi(self):
         """Open the Ko-fi support page in the default web browser."""
-        import webbrowser
-        webbrowser.open("https://ko-fi.com/juke32")
+        from logic.actions import open_url_reliably
+        open_url_reliably("https://ko-fi.com/juke32")
 
     def _read_license(self) -> str:
         """Read LICENSE from bundle or project root."""
@@ -503,18 +503,17 @@ class VideoAlarmMainWindow(tk.Tk):
         # Refresh Alarms UI components if they exist
         if hasattr(self, 'ampm_container') and hasattr(self, 'mil_container'):
             # Clear separators or other ephemeral widgets in container
-            for child in self.time_input_container.winfo_children():
-                child.pack_forget()
+            for child in list(self.time_input_container.winfo_children()):
+                if child is self.ampm_container or child is self.mil_container:
+                    child.pack_forget()
+                else:
+                    child.destroy()
 
             if new_format == "12h":
                 self.ampm_container.pack(side=tk.LEFT, padx=10)
-                # Ensure 24h is hidden
-                self.mil_container.pack_forget()
             elif new_format == "24h":
                 self.mil_label.config(text="Hour:", font=('Arial', 12))
                 self.mil_container.pack(side=tk.LEFT, padx=10)
-                # Ensure 12h is hidden
-                self.ampm_container.pack_forget()
                 for widget in (self.military_hour, self.military_minute):
                     widget.configure(font=('Arial', 48))
             else: # "Both"
@@ -678,70 +677,6 @@ class VideoAlarmMainWindow(tk.Tk):
                 "You can manually pin the executable to your Start Menu by right-clicking it."
             )
 
-    def init_help_tab(self):
-        """Initialize the Help tab with usage instructions and debug info."""
-        from .components import ScrollableFrame
-        
-        # Main Container
-        self.help_scroll = ScrollableFrame(self.help_frame)
-        self.help_scroll.pack(fill=tk.BOTH, expand=True)
-        
-        main_layout = self.help_scroll.scrollable_frame
-
-        # Help Text Container
-        help_container = ttk.Frame(main_layout)
-        help_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        
-        instructions = """
-Juke32 - PyCron Video Alarm Manager
-Info: juke32/PyCronVideoAlarm
-
-1. Setting Alarms
-   - Go to the 'Alarms' tab.
-   - Enter time in 12-hour or 24-hour format.
-   - Use 'Sleep Cycles' to calculate optimal wake times.
-   - Click 'SET ALARM' to schedule.
-
-2. Creating Sequences
-   - Go to the 'Sequences' tab.
-   - Click 'New' to start fresh.
-   - Add actions like 'play_video', 'open_url', etc.
-   - Click 'Save' to store your sequence.
-   - Click 'Test' to try it immediately.
-
-3. Features
-   - Keep Awake: Prevent computer from sleeping.
-   - Black Screen / Dim Display: Manage screen during sleep.
-   - Party Mode: Instant random video playback!
-
-Support the project: https://ko-fi.com/juke32
-
-Enjoy your wake-up experience!
-        """
-        num_lines = len(instructions.strip().split('\n'))
-        help_text = tk.Text(help_container, wrap=tk.WORD, font=('Arial', 11), height=num_lines, relief="flat", borderwidth=0)
-        help_text.pack(fill=tk.BOTH, expand=True)
-        
-        help_text.insert(tk.END, instructions.strip())
-        help_text.configure(state='disabled') # Read-only
-        
-        # Debug Footer
-        debug_frame = ttk.LabelFrame(main_layout, text="Debug Information", padding=10)
-        debug_frame.pack(fill=tk.X, padx=10, pady=10)
-        
-        import platform
-        debug_info = [
-            f"OS: {platform.system()} {platform.release()}",
-            f"Python: {sys.version.split()[0]}",
-            f"Directory: {os.getcwd()}",
-            f"User: {os.getlogin()}"
-        ]
-        
-        for info in debug_info:
-            ttk.Label(debug_frame, text=info, font=("Consolas", 8)).pack(anchor=tk.W)
-            
-        ttk.Button(debug_frame, text="Show Scheduler Debug Info", command=self._show_scheduler_debug).pack(anchor=tk.W, pady=5)
-
     def init_main_tab(self):
         """Initialize the main tab with modern accordion layout."""
         from .components import ScrollableFrame, ActionCard
@@ -798,14 +733,22 @@ Enjoy your wake-up experience!
         from .components import ActionCard
         
         # Temporarily hide the scrollable area to reduce flickering
-        self.action_scroll.canvas.pack_forget()
+        canvas = self.action_scroll.canvas
+        try:
+            y_frac = canvas.yview()
+        except Exception:
+            y_frac = (0.0, 1.0)
+        was_at_bottom = y_frac[1] >= 0.999
+        was_at_top = y_frac[0] < 0.01
+        
+        canvas.pack_forget()
         
         # Clear existing
         for widget in self.action_scroll.scrollable_frame.winfo_children():
             widget.destroy()
             
         if not self.current_sequence:
-            self.action_scroll.canvas.pack(side="left", fill="both", expand=True)
+            canvas.pack(side="left", fill="both", expand=True)
             return
 
         callbacks = {
@@ -826,23 +769,28 @@ Enjoy your wake-up experience!
                 action_data={'type': action.action_type, 'config': action.config},
                 callbacks=callbacks
             )
-            card.pack(fill=tk.X, pady=2)
+            card.pack(fill=tk.X, pady=1)
         
         # Update layout and show the canvas again
         self.action_scroll.scrollable_frame.update_idletasks()
-        self.action_scroll.canvas.pack(side="left", fill="both", expand=True)
+        canvas.pack(side="left", fill="both", expand=True)
+        
+        # Restore scroll position instead of jumping back to the top
+        if was_at_bottom:
+            canvas.yview_moveto(1.0)
+        elif not was_at_top:
+            canvas.yview_moveto(y_frac[0])
 
     # --- Accordion Callbacks ---
     def play_action_by_index(self, index):
-        """Play a single action by index."""
-        if 0 <= index < len(self.current_sequence.actions):
-            action = self.current_sequence.actions[index]
-            import threading
-            from logic.actions import execute_action
-            threading.Thread(
-                target=lambda: execute_action(action.action_type, action.config),
-                daemon=True
-            ).start()
+        """Play a single action by index, exactly as a scheduled run would."""
+        if not self.current_sequence or not (0 <= index < len(self.current_sequence.actions)):
+            return
+        from logic.sequence import AlarmSequence
+        action = self.current_sequence.actions[index]
+        seq = AlarmSequence("Single Action")
+        seq.add_action(action.action_type, action.config)
+        self._spawn_sequence_run(seq, f"action_{index}", show_info_msg=False)
     
     def update_action_from_card(self, index, new_config):
         if 0 <= index < len(self.current_sequence.actions):
@@ -875,8 +823,6 @@ Enjoy your wake-up experience!
             self.current_sequence.move_action(from_index, to_index)
             self.refresh_action_list()
 
-            self.refresh_action_list()
-
     def duplicate_action_by_index(self, index):
         """Duplicate an action and insert it after the original."""
         if 0 <= index < len(self.current_sequence.actions):
@@ -888,20 +834,16 @@ Enjoy your wake-up experience!
             self.refresh_action_list()
 
     def play_sequence_from_index(self, index):
-        """Play sequence starting from the given index."""
+        """Play sequence starting from the given index, as a scheduled run would."""
         if not self.current_sequence or index < 0 or index >= len(self.current_sequence.actions):
             return
-            
+
         logging.info(f"Playing sequence from index {index}")
-        import threading
-        def run_partial():
-            from logic.actions import execute_action
-            # Slice the actions list from index to end
-            actions_to_run = self.current_sequence.actions[index:]
-            for action in actions_to_run:
-                execute_action(action.action_type, action.config)
-        
-        threading.Thread(target=run_partial, daemon=True).start()
+        from logic.sequence import AlarmSequence
+        seq = AlarmSequence("Partial Run")
+        for action in self.current_sequence.actions[index:]:
+            seq.add_action(action.action_type, action.config)
+        self._spawn_sequence_run(seq, f"partial_{index}", show_info_msg=False)
 
     # --- Legacy Adaptors ---
     def refresh_action_list(self):
@@ -918,6 +860,11 @@ Enjoy your wake-up experience!
         
         self.current_sequence.add_action(action_type, config)
         self.render_action_list()
+        # Keep the newly added card in view — don't leave the list snapped to the top
+        try:
+            self.action_scroll.canvas.yview_moveto(1.0)
+        except Exception:
+            pass
 
     # --- Unused Legacy D&D Handlers (Removed) ---
     def on_action_click(self, event): pass
@@ -1084,6 +1031,11 @@ Enjoy your wake-up experience!
         # Alarm List
         list_frame = ttk.Frame(self.alarms_frame)
         list_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        # Next Alarm Ticker (placed ABOVE the list so it never clips on short displays)
+        self.next_alarm_var = tk.StringVar(value="Next Alarm: None")
+        ttk.Label(list_frame, textvariable=self.next_alarm_var, font=("Segoe UI", 10, "bold"), foreground="#007ACC").pack(anchor=tk.W, pady=(0, 5))
+        
         self.alarm_list = ttk.Treeview(list_frame, columns=("time", "sequence", "days", "enabled"), show="headings")
         self.alarm_list.heading("time", text="Time")
         self.alarm_list.heading("sequence", text="Sequence")
@@ -1091,10 +1043,6 @@ Enjoy your wake-up experience!
         self.alarm_list.heading("enabled", text="Status")
         self.alarm_list.column("enabled", width=100, anchor=tk.CENTER)
         self.alarm_list.pack(fill=tk.BOTH, expand=True)
-        
-        # Next Alarm Ticker
-        self.next_alarm_var = tk.StringVar(value="Next Alarm: None")
-        ttk.Label(list_frame, textvariable=self.next_alarm_var, font=("Segoe UI", 10, "bold"), foreground="#007ACC").pack(anchor=tk.W, pady=5)
         
         # Initial load
         self.refresh_alarm_list()
@@ -1289,7 +1237,7 @@ Quickstart Guide
         fixes_frame.pack(fill=tk.X, pady=10)
         
         common_text = """
-• Video won't play? Ensure mpv (Linux) or VLC (Windows) is installed and working.
+• Video won't play? Ensure mpv is installed and working: run 'mpv --version' in a terminal.
 • No alarms firing? Check the 'Next Alarm' text on the ALARMS tab. If it says 'None', try re-setting the alarm.
 • Linux - Cron issues? Ensure crontab access by running 'crontab -l' in a terminal.
   - 'no crontab for user' = you have access (no entries yet).
@@ -1343,45 +1291,62 @@ Quickstart Guide
             messagebox.showwarning("Warning", "No sequence loaded.")
             return
 
-        temp_name = self.sequence_name.get().strip()
-        if not temp_name:
-            temp_name = "New Sequence"
-            
+        temp_name = self.sequence_name.get().strip() or "New Sequence"
+        self._spawn_sequence_run(self.current_sequence, temp_name, show_info_msg=True)
+
+    def _spawn_sequence_run(self, sequence, temp_name, show_info_msg=False):
+        """Save a sequence to the temp dir and run it as a headless subprocess.
+
+        This mirrors how cron / Task Scheduler executes alarms, so testing an
+        action or a sequence behaves exactly like a real scheduled run.
+        """
+        if not sequence or not sequence.actions:
+            return
+
         from core.config import get_app_data_dir
+        safe_name = "".join(x for x in (temp_name or sequence.name or "Run") if x.isalnum() or x in "._- ")[:50]
         temp_dir = os.path.join(get_app_data_dir(), "sequences", "temp")
-        
+        unique = f"{safe_name}_{datetime.now().strftime('%H%M%S')}"
+
         try:
             os.makedirs(temp_dir, exist_ok=True)
-            self.current_sequence.save(temp_dir, filename=f"{temp_name}.json")
-            logging.info(f"Saved temporary sequence for testing: temp/{temp_name}.json")
+            sequence.save(temp_dir, filename=f"{unique}.json")
+            logging.info(f"Saved temporary sequence for testing: temp/{unique}.json")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save temp sequence: {e}")
             return
-            
-        messagebox.showinfo("Temporary Run", 
-                            "Temporarily running sequence...\n\n"
-                            "This test is running from a temporary file to prevent overwriting your existing sequence.\n\n"
-                            "Don't forget to click 'Save' if this works exactly how you would like!")
+
+        if show_info_msg:
+            messagebox.showinfo("Temporary Run",
+                                "Temporarily running sequence...\n\n"
+                                "This test is running from a temporary file to prevent overwriting your existing sequence.\n\n"
+                                "Don't forget to click 'Save' if this works exactly how you would like!")
 
         # Run in a separate thread to spawn the subprocess
         import threading
         def run_test():
             try:
-                from core.config import get_app_data_dir
-                temp_file_path = os.path.join(get_app_data_dir(), "sequences", "temp", f"{temp_name}")
-                
-                cmd = [sys.executable, "src/main.py", "--execute-sequence", temp_file_path]
+                temp_file_path = os.path.join(temp_dir, f"{unique}.json")
+
                 if getattr(sys, 'frozen', False):
                     cmd = [sys.executable, "--execute-sequence", temp_file_path]
-                
+                else:
+                    # Always resolve the script by absolute path — CWD may differ
+                    script_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "main.py")
+                    cmd = [sys.executable, script_path, "--execute-sequence", temp_file_path]
+
                 # Use subprocess.Popen so we don't block the UI while testing
+                if not os.path.exists(temp_file_path):
+                    logging.error(f"Temp sequence file missing: {temp_file_path}")
+                    self.after(0, lambda: messagebox.showerror("Test Error", f"Temp sequence not saved:\n{temp_file_path}"))
+                    return
                 subprocess.Popen(cmd)
-                logging.info(f"Spawned test subprocess for temp sequence {temp_name}")
+                logging.info(f"Spawned test subprocess for temp sequence {unique}")
             except Exception as e:
                 # Catch unexpected top-level errors
                 logging.error(f"Test sequence failed: {e}")
                 self.after(0, lambda: messagebox.showerror("Test Error", f"Unexpected error:\n{str(e)}"))
-        
+
         threading.Thread(target=run_test, daemon=True).start()
 
     def set_alarm(self):
@@ -1669,17 +1634,6 @@ Quickstart Guide
             messagebox.showinfo("Success", "Sequence saved")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save: {e}")
-
-    def add_action(self):
-        """Add action from the footer combo."""
-        action_type = self.action_type.get()
-        if not action_type or not self.current_sequence: return
-        
-        from logic.actions import get_action_template
-        config = get_action_template(action_type)
-        
-        self.current_sequence.add_action(action_type, config)
-        self.render_action_list()
 
     # Legacy config text parser (replaced by individual cards)
     def legacy_add_action(self): pass
